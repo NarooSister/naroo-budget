@@ -1,6 +1,6 @@
 # AGENTS.md
 
-Naroo는 Flutter 기반 부부 가계부다. **MVP 개발과 구조 정리는 완료됐으며**, 이후 기능 추가와 유지보수를 진행한다.
+Naroo는 Flutter 기반 부부 가계부다.
 
 ## 작업 전 확인
 
