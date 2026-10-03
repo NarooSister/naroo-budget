@@ -12,6 +12,7 @@ import '../features/home/home_screen.dart';
 import '../features/profile/profile_name_screen.dart';
 import '../features/settings/category_management_screen.dart';
 import '../features/settings/settings_screen.dart';
+import '../features/statistics/statistics_screen.dart';
 import '../features/transaction/transaction_create_screen.dart';
 import '../features/transaction/transaction_list_screen.dart';
 import 'app_routes.dart';
@@ -118,6 +119,14 @@ final appRouterProvider = Provider<GoRouter>((ref) {
               GoRoute(
                 path: AppRoutes.transactions,
                 builder: (context, state) => const TransactionListScreen(),
+              ),
+            ],
+          ),
+          StatefulShellBranch(
+            routes: [
+              GoRoute(
+                path: AppRoutes.statistics,
+                builder: (context, state) => const StatisticsScreen(),
               ),
             ],
           ),

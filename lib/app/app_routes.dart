@@ -9,6 +9,7 @@ abstract final class AppRoutes {
   static const budget = '/home/budget';
   static const transactions = '/transactions';
   static const transactionNew = '/transactions/new';
+  static const statistics = '/statistics';
   static const settings = '/settings';
   static const categories = '/settings/categories';
 

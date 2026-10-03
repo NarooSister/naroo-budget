@@ -5,6 +5,7 @@ import 'package:go_router/go_router.dart';
 import '../core/selected_month.dart';
 import '../features/home/home_controller.dart';
 import '../features/settings/settings_controller.dart';
+import '../features/statistics/statistics_controller.dart';
 import '../features/transaction/transaction_list_controller.dart';
 import 'theme/naroo_colors.dart';
 import 'theme/naroo_icons.dart';
@@ -31,11 +32,15 @@ class AppShell extends ConsumerWidget {
               ref.invalidate(currentMonthProvider);
               ref.invalidate(homeSummaryProvider);
             }
-            if (index == 2) ref.invalidate(settingsMembersProvider);
             if (index == 1) {
               ref.invalidate(currentMonthProvider);
               ref.invalidate(monthTransactionsProvider);
             }
+            if (index == 2) {
+              ref.invalidate(currentMonthProvider);
+              ref.invalidate(statisticsProvider);
+            }
+            if (index == 3) ref.invalidate(settingsMembersProvider);
             navigationShell.goBranch(index);
           },
           destinations: const [
@@ -48,6 +53,11 @@ class AppShell extends ConsumerWidget {
               icon: Icon(NarooIcons.transactions, size: NarooIcons.nav),
               selectedIcon: Icon(NarooIcons.transactions, size: NarooIcons.nav),
               label: '내역',
+            ),
+            NavigationDestination(
+              icon: Icon(NarooIcons.statistics, size: NarooIcons.nav),
+              selectedIcon: Icon(NarooIcons.statistics, size: NarooIcons.nav),
+              label: '통계',
             ),
             NavigationDestination(
               icon: Icon(NarooIcons.settings, size: NarooIcons.nav),

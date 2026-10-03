@@ -14,6 +14,7 @@ abstract final class NarooIcons {
 
   static const IconData home = LucideIcons.home;
   static const IconData transactions = LucideIcons.receipt;
+  static const IconData statistics = LucideIcons.pieChart;
   static const IconData settings = LucideIcons.settings;
   static const IconData add = LucideIcons.plus;
   static const IconData close = LucideIcons.x;

@@ -25,6 +25,18 @@ abstract final class NarooColors {
   static const Color error = Color(0xFFC24132);
   static const Color errorSurface = Color(0xFFFDF0EE);
 
+  /// Chart slices in amount order; repeats after the last color.
+  static const List<Color> chart = [
+    Color(0xFF415744),
+    Color(0xFFD08B5B),
+    Color(0xFF7A9CB0),
+    Color(0xFFC9A646),
+    Color(0xFFA9788E),
+    Color(0xFF8FB08A),
+    Color(0xFFB85642),
+    Color(0xFF9A8F80),
+  ];
+
   /// Modal dim. Black at 35% opacity.
   static const Color barrier = Color(0x59000000);
 
