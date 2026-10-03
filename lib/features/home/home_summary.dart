@@ -15,5 +15,40 @@ class HomeSummary {
       .fold(0, (total, i) => total + i.transaction.amount);
   int get balance => income - expense;
   int? get remaining => budget == null ? null : budget! - expense;
-  List<TransactionListItem> get recent => items.take(5).toList();
+
+  late final Map<DateTime, DayTotal> dailyTotals = () {
+    final totals = <DateTime, DayTotal>{};
+    for (final item in items) {
+      final day = _day(item.transaction.occurredOn);
+      final current = totals[day] ?? const DayTotal();
+      totals[day] = item.transaction.type == CategoryType.income
+          ? DayTotal(
+              income: current.income + item.transaction.amount,
+              expense: current.expense,
+            )
+          : DayTotal(
+              income: current.income,
+              expense: current.expense + item.transaction.amount,
+            );
+    }
+    return totals;
+  }();
+
+  List<TransactionListItem> itemsOn(DateTime day) {
+    final target = _day(day);
+    return [
+      for (final item in items)
+        if (_day(item.transaction.occurredOn) == target) item,
+    ];
+  }
+
+  static DateTime _day(DateTime date) =>
+      DateTime(date.year, date.month, date.day);
+}
+
+class DayTotal {
+  const DayTotal({this.income = 0, this.expense = 0});
+
+  final int income;
+  final int expense;
 }

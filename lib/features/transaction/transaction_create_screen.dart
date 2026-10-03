@@ -17,9 +17,16 @@ import 'transaction_editor_controller.dart';
 import 'widgets/transaction_category_picker.dart';
 
 class TransactionCreateScreen extends ConsumerStatefulWidget {
-  const TransactionCreateScreen({super.key, this.transactionId});
+  const TransactionCreateScreen({
+    super.key,
+    this.transactionId,
+    this.initialDate,
+  });
 
   final String? transactionId;
+
+  /// Date chosen on the home calendar. Ignored when editing.
+  final DateTime? initialDate;
 
   bool get isEditing => transactionId != null;
 
@@ -59,6 +66,11 @@ class _TransactionCreateScreenState
     super.initState();
     if (!widget.isEditing) {
       _paymentMethod = _preferredPaymentMethod;
+      final initialDate = widget.initialDate;
+      if (initialDate != null) {
+        _occurredOn = initialDate;
+        _showOptionalFields = true;
+      }
     }
     if (widget.isEditing) {
       _showOptionalFields = true;

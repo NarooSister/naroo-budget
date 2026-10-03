@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../core/selected_month.dart';
 import '../features/home/home_controller.dart';
 import '../features/settings/settings_controller.dart';
 import '../features/transaction/transaction_list_controller.dart';
@@ -27,12 +28,13 @@ class AppShell extends ConsumerWidget {
           selectedIndex: navigationShell.currentIndex,
           onDestinationSelected: (index) {
             if (index == 0) {
-              ref.invalidate(homeMonthProvider);
+              ref.invalidate(currentMonthProvider);
               ref.invalidate(homeSummaryProvider);
             }
             if (index == 2) ref.invalidate(settingsMembersProvider);
             if (index == 1) {
-              ref.invalidate(monthlyTransactionsProvider);
+              ref.invalidate(currentMonthProvider);
+              ref.invalidate(monthTransactionsProvider);
             }
             navigationShell.goBranch(index);
           },

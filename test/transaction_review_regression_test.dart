@@ -85,8 +85,7 @@ void main() {
         ..missingOnRead = missing;
       await _pumpApp(tester, repository);
       await _openTab(tester, '내역');
-      await tester.tap(find.textContaining('기존 기록'));
-      await tester.pumpAndSettle();
+      await _openEdit(tester);
       expect(find.byType(TextField), findsNothing);
       expect(
         tester
@@ -184,7 +183,7 @@ void main() {
         await _openTab(tester, '홈');
         await tester.tap(find.byTooltip('기록 추가'));
       } else {
-        await tester.tap(find.textContaining('기존 기록'));
+        await _openEdit(tester);
       }
       await tester.pumpAndSettle();
       repository.delay = const Duration(seconds: 3);
@@ -236,8 +235,7 @@ void main() {
     final repository = FakeTransactionRepository([_item()]);
     await _pumpApp(tester, repository);
     await _openTab(tester, '내역');
-    await tester.tap(find.textContaining('기존 기록'));
-    await tester.pumpAndSettle();
+    await _openEdit(tester);
     repository.delay = const Duration(seconds: 3);
     await tester.enterText(find.byType(TextField).first, '15000');
     await tester.tap(find.widgetWithText(FilledButton, '수정 저장'));
@@ -245,6 +243,8 @@ void main() {
     await tester.pageBack();
     await tester.pumpAndSettle();
     await tester.tap(find.textContaining('기존 기록'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.widgetWithText(FilledButton, '수정'));
     await tester.pump(const Duration(milliseconds: 400));
 
     // Loading this editor again must not unlock the save button.
@@ -268,8 +268,7 @@ void main() {
       ]);
       await _pumpApp(tester, repository);
       await _openTab(tester, '내역');
-      await tester.tap(find.textContaining('기존 기록'));
-      await tester.pumpAndSettle();
+      await _openEdit(tester);
 
       expect(find.widgetWithText(NarooCategoryChip, '식비'), findsOneWidget);
       expect(find.widgetWithText(NarooCategoryChip, '기존 숨김'), findsOneWidget);
@@ -316,6 +315,13 @@ void main() {
     expect(repository.created, hasLength(1));
     expect(find.text('NAROO.'), findsOneWidget);
   });
+}
+
+Future<void> _openEdit(WidgetTester tester) async {
+  await tester.tap(find.textContaining('기존 기록'));
+  await tester.pumpAndSettle();
+  await tester.tap(find.widgetWithText(FilledButton, '수정'));
+  await tester.pumpAndSettle();
 }
 
 Future<void> _openTab(WidgetTester tester, String label) async {

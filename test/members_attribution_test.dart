@@ -4,6 +4,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:naroo/app/app.dart';
 import 'package:naroo/app/router.dart';
 import 'package:naroo/core/household_member_changes.dart';
+import 'package:naroo/core/selected_month.dart';
 import 'package:naroo/core/seoul_date.dart';
 import 'package:naroo/core/session/app_session.dart';
 import 'package:naroo/data/models/category.dart';
@@ -12,7 +13,6 @@ import 'package:naroo/data/models/profile.dart';
 import 'package:naroo/data/models/transaction.dart';
 import 'package:naroo/data/repository_providers.dart';
 import 'package:naroo/features/home/home_summary.dart';
-import 'package:naroo/features/home/home_controller.dart';
 import 'package:naroo/features/settings/settings_controller.dart';
 import 'package:naroo/features/transaction/transaction_editor_controller.dart';
 
@@ -256,7 +256,7 @@ Future<ProviderContainer> _pump(
   final container = ProviderContainer(
     overrides: [
       appSessionProvider.overrideWith(_Session.new),
-      homeMonthProvider.overrideWith((ref) => SeoulDate.monthStart()),
+      currentMonthProvider.overrideWith((ref) => SeoulDate.monthStart()),
       householdMemberRepositoryProvider.overrideWithValue(
         members ?? FakeHouseholdMemberRepository([_me, _custom, _hidden]),
       ),

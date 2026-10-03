@@ -9,16 +9,18 @@ import '../../app/theme/naroo_spacing.dart';
 import '../../app/theme/naroo_text.dart';
 import '../../app/theme/naroo_widgets.dart';
 import '../../core/money_format.dart';
+import '../../core/selected_month.dart';
 import '../../core/seoul_date.dart';
 import '../../data/models/category.dart';
 import 'transaction_list_controller.dart';
+import 'widgets/transaction_detail_sheet.dart';
 
 class TransactionListScreen extends ConsumerWidget {
   const TransactionListScreen({super.key});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final month = ref.watch(transactionListMonthProvider);
+    final month = ref.watch(selectedMonthProvider);
     final filter = ref.watch(transactionListFilterProvider);
     final transactionsAsync = ref.watch(monthlyTransactionsProvider);
 
@@ -39,7 +41,7 @@ class TransactionListScreen extends ConsumerWidget {
                   IconButton(
                     tooltip: '이전 달',
                     onPressed: () => ref
-                        .read(transactionListMonthProvider.notifier)
+                        .read(selectedMonthProvider.notifier)
                         .goToPreviousMonth(),
                     icon: const Icon(NarooIcons.back, size: NarooIcons.action),
                   ),
@@ -53,7 +55,7 @@ class TransactionListScreen extends ConsumerWidget {
                   IconButton(
                     tooltip: '다음 달',
                     onPressed: () => ref
-                        .read(transactionListMonthProvider.notifier)
+                        .read(selectedMonthProvider.notifier)
                         .goToNextMonth(),
                     icon: const Icon(
                       NarooIcons.forward,
@@ -151,9 +153,8 @@ class TransactionListScreen extends ConsumerWidget {
                                       : NarooColors.expense,
                                 ),
                               ),
-                              onTap: () => context.push(
-                                AppRoutes.transactionEdit(item.transaction.id),
-                              ),
+                              onTap: () =>
+                                  showTransactionDetailSheet(context, item),
                             ),
                         ],
                       );

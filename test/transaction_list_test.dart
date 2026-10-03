@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import 'package:naroo/app/app.dart';
 import 'package:naroo/core/money_format.dart';
 import 'package:naroo/core/seoul_date.dart';
+import 'package:naroo/core/selected_month.dart';
 import 'package:naroo/core/session/app_session.dart';
 import 'package:naroo/data/models/category.dart';
 import 'package:naroo/data/models/household_member.dart';
@@ -131,7 +132,7 @@ void main() {
               ),
             ),
           ),
-          transactionListMonthProvider.overrideWith(_September2026Month.new),
+          currentMonthProvider.overrideWith((ref) => DateTime(2026, 9)),
           categoryRepositoryProvider.overrideWithValue(
             FakeCategoryRepository([
               const Category(
@@ -184,15 +185,12 @@ void main() {
     await tester.pumpAndSettle();
     await tester.tap(find.text('점심 · 테스트 사용자'));
     await tester.pumpAndSettle();
+    await tester.tap(find.widgetWithText(FilledButton, '수정'));
+    await tester.pumpAndSettle();
 
     expect(find.widgetWithText(AppBar, '기록 수정'), findsOneWidget);
     expect(find.text('12000'), findsOneWidget);
   });
-}
-
-class _September2026Month extends TransactionListMonth {
-  @override
-  DateTime build() => DateTime(2026, 9);
 }
 
 class _FakeAppSessionNotifier extends AppSessionNotifier {

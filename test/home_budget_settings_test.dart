@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:flutter/material.dart';
 
+import 'package:naroo/core/selected_month.dart';
 import 'package:naroo/core/session/app_session.dart';
 import 'package:naroo/core/transaction_changes.dart';
 import 'package:naroo/data/models/category.dart';
@@ -101,6 +102,11 @@ TransactionListItem item(
   ),
 );
 
+Future<List<TransactionListItem>> listed(ProviderContainer container) async {
+  await container.read(monthTransactionsProvider.future);
+  return container.read(monthlyTransactionsProvider).requireValue;
+}
+
 void main() {
   test('월 목록은 변경 알림 후 기존 데이터와 선택 월/필터를 유지하며 갱신한다', () async {
     final repo = GatedTransactions([]);
@@ -111,11 +117,11 @@ void main() {
       ],
     );
     addTearDown(container.dispose);
-    container.read(transactionListMonthProvider.notifier).goToPreviousMonth();
+    container.read(selectedMonthProvider.notifier).goToPreviousMonth();
     container
         .read(transactionListFilterProvider.notifier)
         .setFilter(TransactionListFilter.expense);
-    final selectedMonth = container.read(transactionListMonthProvider);
+    final selectedMonth = container.read(selectedMonthProvider);
     for (final type in CategoryType.values) {
       await repo.create(
         NewTransaction(
@@ -130,27 +136,26 @@ void main() {
     }
     final sub = container.listen(monthlyTransactionsProvider, (_, _) {});
     addTearDown(sub.close);
-    expect(
-      (await container.read(monthlyTransactionsProvider.future)).length,
-      1,
-    );
+    expect((await listed(container)).length, 1);
     repo.gate = Completer<void>();
     container.read(transactionChangesProvider.notifier).changed();
     await container.pump();
     final refreshing = container.read(monthlyTransactionsProvider);
     expect(refreshing.isRefreshing, true);
     expect(refreshing.requireValue.single.transaction.amount, 100);
-    expect(container.read(transactionListMonthProvider), selectedMonth);
+    expect(container.read(selectedMonthProvider), selectedMonth);
     expect(
       container.read(transactionListFilterProvider),
       TransactionListFilter.expense,
     );
     repo.gate!.complete();
-    expect(
-      (await container.read(monthlyTransactionsProvider.future)).length,
-      1,
-    );
+    expect((await listed(container)).length, 1);
     expect(repo.listCalls, 2);
+    container
+        .read(transactionListFilterProvider.notifier)
+        .setFilter(TransactionListFilter.all);
+    expect((await listed(container)).length, 2);
+    expect(repo.listCalls, 2, reason: '필터 변경은 다시 조회하지 않는다');
   });
 
   test('실패한 거래 저장은 홈/내역을 갱신하지 않고 성공한 재시도는 갱신한다', () async {
@@ -160,7 +165,7 @@ void main() {
         appSessionProvider.overrideWith(Session.new),
         transactionRepositoryProvider.overrideWithValue(repo),
         monthlyBudgetRepositoryProvider.overrideWithValue(Budget()),
-        homeMonthProvider.overrideWith((ref) => DateTime(2026, 12)),
+        currentMonthProvider.overrideWith((ref) => DateTime(2026, 12)),
       ],
     );
     addTearDown(container.dispose);
@@ -174,7 +179,7 @@ void main() {
     addTearDown(listSub.close);
     addTearDown(editorSub.close);
     await container.read(homeSummaryProvider.future);
-    await container.read(monthlyTransactionsProvider.future);
+    await listed(container);
     final calls = repo.listCalls;
     final editor = container.read(transactionEditorProvider(null).notifier);
     final input = NewTransaction(
@@ -192,11 +197,11 @@ void main() {
     repo.writeError = null;
     expect(await editor.save(input), true);
     expect((await container.read(homeSummaryProvider.future)).income, 100);
-    await container.read(monthlyTransactionsProvider.future);
+    await listed(container);
     expect(repo.listCalls, calls + 2);
   });
 
-  test('홈은 현재 월/Household 전체 거래로 계산하며 내역 선택 월과 독립이다', () async {
+  test('홈은 선택 월/Household 전체 거래로 계산하며 내역과 같은 월을 쓴다', () async {
     final repo = FakeTransactionRepository([
       item(100, CategoryType.income, DateTime(2026, 12, 1)),
       item(250, CategoryType.expense, DateTime(2026, 12, 31)),
@@ -213,7 +218,7 @@ void main() {
     final container = ProviderContainer(
       overrides: [
         appSessionProvider.overrideWith(Session.new),
-        homeMonthProvider.overrideWith((ref) => currentMonth),
+        currentMonthProvider.overrideWith((ref) => currentMonth),
         transactionRepositoryProvider.overrideWithValue(repo),
         monthlyBudgetRepositoryProvider.overrideWithValue(budget),
       ],
@@ -221,13 +226,11 @@ void main() {
     addTearDown(container.dispose);
     final sub = container.listen(homeSummaryProvider, (_, _) {});
     addTearDown(sub.close);
-    container.read(transactionListMonthProvider.notifier).goToNextMonth();
     final summary = await container.read(homeSummaryProvider.future);
     expect(summary.income, 100);
     expect(summary.expense, 250);
     expect(summary.balance, -150);
     expect(summary.remaining, -50);
-    expect(summary.recent.first.transaction.amount, 250);
     await container
         .read(transactionEditorProvider(null).notifier)
         .save(
@@ -261,12 +264,25 @@ void main() {
     expect((await container.read(homeSummaryProvider.future)).remaining, 0);
     await edit.delete();
     expect((await container.read(homeSummaryProvider.future)).expense, 0);
-    currentMonth = DateTime(2027, 1);
-    container.invalidate(homeMonthProvider);
+    container.read(selectedMonthProvider.notifier).goToNextMonth();
     final january = await container.read(homeSummaryProvider.future);
     expect(january.month, DateTime(2027, 1));
     expect(january.expense, 999);
     expect(january.income, 0);
+    final listSub = container.listen(monthlyTransactionsProvider, (_, _) {});
+    addTearDown(listSub.close);
+    expect((await listed(container)).single.transaction.amount, 999);
+
+    container.read(selectedMonthProvider.notifier).goToPreviousMonth();
+    container.read(selectedMonthProvider.notifier).goToPreviousMonth();
+    expect(container.read(selectedMonthProvider), DateTime(2026, 11));
+    currentMonth = DateTime(2027, 1);
+    container.invalidate(currentMonthProvider);
+    expect(
+      container.read(selectedMonthProvider),
+      DateTime(2027, 1),
+      reason: '서울 월이 바뀌면 이번 달로 돌아간다',
+    );
   });
   test('월 경계 대기는 웹 타이머 한계 안에서 다음 달까지 다시 건다', () {
     final octoberStart = DateTime.utc(
@@ -275,8 +291,8 @@ void main() {
       1,
     ).subtract(const Duration(hours: 9));
     expect(
-      homeMonthTimerDelay(nowUtc: octoberStart, month: DateTime(2026, 10)),
-      homeMonthMaxTimerDelay,
+      currentMonthTimerDelay(nowUtc: octoberStart, month: DateTime(2026, 10)),
+      currentMonthMaxTimerDelay,
     );
     final decemberStart = DateTime.utc(
       2026,
@@ -284,8 +300,8 @@ void main() {
       1,
     ).subtract(const Duration(hours: 9));
     expect(
-      homeMonthTimerDelay(nowUtc: decemberStart, month: DateTime(2026, 12)),
-      homeMonthMaxTimerDelay,
+      currentMonthTimerDelay(nowUtc: decemberStart, month: DateTime(2026, 12)),
+      currentMonthMaxTimerDelay,
     );
     final nextMonth = DateTime.utc(
       2026,
@@ -293,22 +309,22 @@ void main() {
       1,
     ).subtract(const Duration(hours: 9));
     expect(
-      homeMonthTimerDelay(
+      currentMonthTimerDelay(
         nowUtc: nextMonth.subtract(const Duration(hours: 2)),
         month: DateTime(2026, 10),
       ),
       const Duration(hours: 2),
     );
     expect(
-      homeMonthTimerDelay(
+      currentMonthTimerDelay(
         nowUtc: nextMonth.add(const Duration(minutes: 1)),
         month: DateTime(2026, 10),
       ),
       const Duration(seconds: 1),
     );
-    expect(homeMonthMaxTimerDelay.inMilliseconds, lessThan(2147483647));
+    expect(currentMonthMaxTimerDelay.inMilliseconds, lessThan(2147483647));
   });
-  test('빈 월, 미설정, 0원과 최근 5건을 구분한다', () {
+  test('빈 월, 미설정, 0원과 날짜별 수입/지출 합계를 구분한다', () {
     final empty = HomeSummary(
       month: DateTime(2026, 1),
       budget: null,
@@ -316,17 +332,25 @@ void main() {
     );
     expect(empty.balance, 0);
     expect(empty.remaining, null);
-    expect(empty.recent, isEmpty);
+    expect(empty.dailyTotals, isEmpty);
+    expect(empty.itemsOn(DateTime(2026, 1, 1)), isEmpty);
     final zero = HomeSummary(
       month: DateTime(2026, 1),
       budget: 0,
       items: [
         for (var i = 0; i < 8; i++)
           item(1, CategoryType.expense, DateTime(2026, 1, 1)),
+        item(500, CategoryType.income, DateTime(2026, 1, 1)),
+        item(30, CategoryType.expense, DateTime(2026, 1, 31)),
       ],
     );
-    expect(zero.remaining, -8);
-    expect(zero.recent, hasLength(5));
+    expect(zero.remaining, -38);
+    final first = zero.dailyTotals[DateTime(2026, 1, 1)]!;
+    expect(first.income, 500);
+    expect(first.expense, 8);
+    expect(zero.dailyTotals[DateTime(2026, 1, 31)]!.expense, 30);
+    expect(zero.dailyTotals[DateTime(2026, 1, 2)], isNull);
+    expect(zero.itemsOn(DateTime(2026, 1, 1)), hasLength(9));
   });
   test('예산 연속 저장 차단 및 실패 후 재시도', () async {
     final budget = Budget()..pending = Completer<void>();
@@ -360,7 +384,7 @@ void main() {
       ProviderScope(
         overrides: [
           appSessionProvider.overrideWith(Session.new),
-          homeMonthProvider.overrideWith((ref) => DateTime(2026, 12)),
+          currentMonthProvider.overrideWith((ref) => DateTime(2026, 12)),
           monthlyBudgetRepositoryProvider.overrideWithValue(budget),
           transactionRepositoryProvider.overrideWithValue(
             FakeTransactionRepository([
@@ -417,7 +441,7 @@ void main() {
     final container = ProviderContainer(
       overrides: [
         appSessionProvider.overrideWith(Session.new),
-        homeMonthProvider.overrideWith((ref) => DateTime(2026, 12)),
+        currentMonthProvider.overrideWith((ref) => DateTime(2026, 12)),
         monthlyBudgetRepositoryProvider.overrideWithValue(Budget()),
         transactionRepositoryProvider.overrideWithValue(transactions),
       ],

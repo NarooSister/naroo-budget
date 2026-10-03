@@ -49,7 +49,9 @@ UI는 Supabase 쿼리와 주요 업무 계산을 하지 않는다. Repository �
 - 금액·월·Household 규칙은 [제품 문서](docs/PRODUCT.md)를 따른다. 접근 제어는 RLS로 보장하며 클라이언트에 service role key를 넣지 않는다.
 - 거래 쓰기 성공 시 `transactionChangesProvider`에 알리고 홈·내역이 각자 갱신한다. 실패 시 성공 알림을 보내지 않는다.
 - 쓰기 중 화면을 떠나도 완료·알림을 처리하고 중복 저장을 막는다. 수정 대상의 조회 실패/없음 상태에서는 쓰기를 막는다.
-- 탭 재진입·홈 앱 복귀·수동 새로고침으로 외부 변경을 확인한다. 홈은 현재 서울 월, 내역은 독립적인 선택 월·필터를 유지한다.
+- 탭 재진입·홈 앱 복귀·수동 새로고침으로 외부 변경을 확인한다. 선택 월은 `core/selected_month.dart`의 `selectedMonthProvider` 하나를 홈·내역이 공유하며 현재 서울 월(`currentMonthProvider`)이 바뀌면 그 월로 돌아간다.
+- 홈과 내역은 선택 월 전체를 한 번 조회하고 날짜별 합계(`HomeSummary.dailyTotals`)와 유형 필터를 앱에서 계산한다. 날짜 선택·필터 변경은 재조회하지 않는다. 거래 쓰기 알림은 기존 데이터를 유지한 채 갱신하고 월 변경만 로딩을 표시한다.
+- 기록 상세 시트는 `features/transaction/widgets/`에 두고 홈 일별 시트가 재사용한다. 지정 날짜 추가는 `/transactions/new?date=yyyy-MM-dd`로 연다.
 - schema는 migration으로 관리하고 초기 사용자 연결 SQL은 bootstrap으로 분리한다.
 
 ## 확장 기준

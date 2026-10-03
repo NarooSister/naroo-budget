@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../core/seoul_date.dart';
 import '../core/session/app_session.dart';
 import '../features/auth/household_connection_screen.dart';
 import '../features/auth/login_screen.dart';
@@ -82,7 +83,9 @@ final appRouterProvider = Provider<GoRouter>((ref) {
       ),
       GoRoute(
         path: AppRoutes.transactionNew,
-        builder: (context, state) => const TransactionCreateScreen(),
+        builder: (context, state) => TransactionCreateScreen(
+          initialDate: SeoulDate.tryParse(state.uri.queryParameters['date']),
+        ),
       ),
       GoRoute(
         path: '/transactions/:transactionId/edit',

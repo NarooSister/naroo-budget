@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:naroo/core/selected_month.dart';
 import 'package:naroo/features/home/home_controller.dart';
 import 'package:naroo/features/home/home_screen.dart';
 import 'package:naroo/features/home/home_summary.dart';
@@ -12,6 +13,7 @@ void main() {
     var budget = 1000;
     final container = ProviderContainer(
       overrides: [
+        currentMonthProvider.overrideWith((ref) => DateTime(2026, 12)),
         homeSummaryProvider.overrideWith((ref) async {
           calls++;
           if (fail) throw StateError('private server error');
@@ -31,11 +33,11 @@ void main() {
       ),
     );
     await tester.pumpAndSettle();
-    expect(find.text('이번 달 정보를 불러오지 못했습니다.'), findsOneWidget);
+    expect(find.text('이 달 정보를 불러오지 못했습니다.'), findsOneWidget);
     await tester.tap(find.text('다시 시도'));
     await tester.pumpAndSettle();
     expect(calls, 2);
-    expect(find.text('이번 달 정보를 불러오지 못했습니다.'), findsOneWidget);
+    expect(find.text('이 달 정보를 불러오지 못했습니다.'), findsOneWidget);
     fail = false;
     await tester.tap(find.text('다시 시도'));
     await tester.pumpAndSettle();

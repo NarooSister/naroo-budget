@@ -1,7 +1,8 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import '../../core/seoul_date.dart';
 import '../../core/household_member_changes.dart';
+import '../../core/selected_month.dart';
+import '../../core/seoul_date.dart';
 import '../../core/session/app_session.dart';
 import '../../core/transaction_changes.dart';
 import '../../data/models/category.dart';
@@ -26,22 +27,6 @@ enum TransactionListFilter {
   };
 }
 
-class TransactionListMonth extends Notifier<DateTime> {
-  @override
-  DateTime build() => SeoulDate.monthStart();
-
-  void goToPreviousMonth() {
-    state = SeoulDate.previousMonth(state);
-  }
-
-  void goToNextMonth() {
-    state = SeoulDate.nextMonth(state);
-  }
-}
-
-final transactionListMonthProvider =
-    NotifierProvider<TransactionListMonth, DateTime>(TransactionListMonth.new);
-
 class TransactionListFilterNotifier extends Notifier<TransactionListFilter> {
   @override
   TransactionListFilter build() => TransactionListFilter.all;
@@ -56,10 +41,12 @@ final transactionListFilterProvider =
       TransactionListFilterNotifier.new,
     );
 
-final monthlyTransactionsProvider =
+/// All records of the selected month. The type filter is applied in
+/// [monthlyTransactionsProvider] so changing it does not query again.
+final monthTransactionsProvider =
     FutureProvider.autoDispose<List<TransactionListItem>>((ref) async {
       // A successful write refreshes this query without discarding the previous
-      // list or changing the independently selected month and filter.
+      // list or changing the selected month and filter.
       ref.listen(transactionChangesProvider, (_, _) => ref.invalidateSelf());
       ref.listen(
         householdMemberChangesProvider,
@@ -71,15 +58,24 @@ final monthlyTransactionsProvider =
         return const [];
       }
 
-      final month = ref.watch(transactionListMonthProvider);
-      final filter = ref.watch(transactionListFilterProvider);
-
+      final month = ref.watch(selectedMonthProvider);
       return ref
           .read(transactionRepositoryProvider)
-          .listByMonth(
-            householdId: householdId,
-            month: month,
-            type: filter.categoryType,
+          .listByMonth(householdId: householdId, month: month);
+    });
+
+final monthlyTransactionsProvider =
+    Provider.autoDispose<AsyncValue<List<TransactionListItem>>>((ref) {
+      final type = ref.watch(transactionListFilterProvider).categoryType;
+      return ref
+          .watch(monthTransactionsProvider)
+          .whenData(
+            (items) => type == null
+                ? items
+                : [
+                    for (final item in items)
+                      if (item.transaction.type == type) item,
+                  ],
           );
     });
 

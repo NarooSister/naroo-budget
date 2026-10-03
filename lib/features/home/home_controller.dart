@@ -1,51 +1,18 @@
-import 'dart:async';
-
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import '../../core/seoul_date.dart';
 import '../../core/household_member_changes.dart';
+import '../../core/selected_month.dart';
 import '../../core/session/app_session.dart';
 import '../../core/transaction_changes.dart';
 import '../../data/repository_providers.dart';
 import 'home_summary.dart';
 
-/// Web `setTimeout` stores the delay as a signed 32-bit millisecond count.
-/// A wait longer than about 24.8 days overflows and runs immediately, so each
-/// timer stays within one day and the provider recomputes until the month changes.
-const homeMonthMaxTimerDelay = Duration(hours: 24);
-
-Duration homeMonthTimerDelay({
-  required DateTime nowUtc,
-  required DateTime month,
-}) {
-  final nextMonthStartUtc = DateTime.utc(
-    month.year,
-    month.month + 1,
-  ).subtract(const Duration(hours: 9));
-  final remaining = nextMonthStartUtc.difference(nowUtc);
-  if (remaining > homeMonthMaxTimerDelay) return homeMonthMaxTimerDelay;
-  if (remaining < const Duration(milliseconds: 1)) {
-    return const Duration(seconds: 1);
-  }
-  return remaining;
-}
-
-final homeMonthProvider = Provider.autoDispose<DateTime>((ref) {
-  final now = DateTime.now().toUtc();
-  final month = SeoulDate.monthStart();
-  final timer = Timer(
-    homeMonthTimerDelay(nowUtc: now, month: month),
-    ref.invalidateSelf,
-  );
-  ref.onDispose(timer.cancel);
-  return month;
-});
-
 final homeSummaryProvider = FutureProvider.autoDispose<HomeSummary>((
   ref,
 ) async {
-  final month = ref.watch(homeMonthProvider);
-  ref.watch(transactionChangesProvider);
+  final month = ref.watch(selectedMonthProvider);
+  // Writes refresh in place; only a month change shows the loading state.
+  ref.listen(transactionChangesProvider, (_, _) => ref.invalidateSelf());
   ref.listen(householdMemberChangesProvider, (_, _) => ref.invalidateSelf());
   final session = await ref.watch(appSessionProvider.future);
   final householdId = session.member?.householdId;

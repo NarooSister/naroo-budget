@@ -303,6 +303,8 @@ void main() {
     await tester.pumpAndSettle();
     await tester.tap(find.text('미분류'));
     await tester.pumpAndSettle();
+    await tester.tap(find.widgetWithText(FilledButton, '수정'));
+    await tester.pumpAndSettle();
     expect(find.widgetWithText(AppBar, '기록 수정'), findsOneWidget);
     expect(find.text('미분류'), findsOneWidget);
     await tester.tap(find.text('수정 저장'));

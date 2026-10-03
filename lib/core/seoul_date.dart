@@ -30,6 +30,20 @@ abstract final class SeoulDate {
     return '$year-$month-$day';
   }
 
+  /// Parses `yyyy-MM-dd`; returns null for any other or impossible date.
+  static DateTime? tryParse(String? raw) {
+    final match = RegExp(r'^(\d{4})-(\d{2})-(\d{2})$').firstMatch(raw ?? '');
+    if (match == null) return null;
+    final year = int.parse(match.group(1)!);
+    final month = int.parse(match.group(2)!);
+    final day = int.parse(match.group(3)!);
+    final date = DateTime(year, month, day);
+    if (date.year != year || date.month != month || date.day != day) {
+      return null;
+    }
+    return date;
+  }
+
   static String display(DateTime date) {
     return '${date.year}년 ${date.month}월 ${date.day}일';
   }
