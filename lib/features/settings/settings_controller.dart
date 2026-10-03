@@ -12,8 +12,9 @@ final settingsMembersProvider =
         householdMemberChangesProvider,
         (_, _) => ref.invalidateSelf(),
       );
-      final session = await ref.watch(appSessionProvider.future);
-      final id = session.member?.householdId;
+      final id = await ref.watch(
+        appSessionProvider.selectAsync((s) => s.member?.householdId),
+      );
       if (id == null) return [];
       return ref.read(householdMemberRepositoryProvider).listByHousehold(id);
     });
