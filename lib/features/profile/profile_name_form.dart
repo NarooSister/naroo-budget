@@ -38,6 +38,7 @@ class _ProfileNameFormState extends ConsumerState<ProfileNameForm> {
       setState(() => _error = error);
       return;
     }
+    FocusScope.of(context).unfocus();
     setState(() => _error = null);
     final saved = await ref
         .read(profileNameEditorProvider.notifier)
