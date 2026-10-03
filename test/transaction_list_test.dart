@@ -190,6 +190,13 @@ void main() {
 
     expect(find.widgetWithText(AppBar, '기록 수정'), findsOneWidget);
     expect(find.text('12000'), findsOneWidget);
+
+    await tester.pageBack();
+    await tester.pumpAndSettle();
+    await tester.tap(find.byTooltip('기록 추가'));
+    await tester.pumpAndSettle();
+
+    expect(find.widgetWithText(AppBar, '기록 추가'), findsOneWidget);
   });
 }
 

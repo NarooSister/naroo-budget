@@ -26,6 +26,13 @@ class TransactionListScreen extends ConsumerWidget {
 
     return Scaffold(
       appBar: AppBar(title: const Text('내역')),
+      floatingActionButton: FloatingActionButton(
+        // The home tab's button stays mounted and owns the default hero tag.
+        heroTag: null,
+        onPressed: () => context.push(AppRoutes.transactionNew),
+        tooltip: '기록 추가',
+        child: const Icon(NarooIcons.add, size: NarooIcons.action),
+      ),
       body: SafeArea(
         child: Column(
           children: [
@@ -104,7 +111,8 @@ class TransactionListScreen extends ConsumerWidget {
                       NarooSpacing.space20,
                       NarooSpacing.space8,
                       NarooSpacing.space20,
-                      NarooSpacing.space24,
+                      // Keeps the last amount clear of the add button.
+                      NarooSpacing.space48 * 2,
                     ),
                     itemCount: groups.length,
                     itemBuilder: (context, index) {
