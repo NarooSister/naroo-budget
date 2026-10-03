@@ -37,12 +37,14 @@ class _CategoryManagementScreenState
   Future<void> _showEditor({
     required CategoryType type,
     Category? category,
+    Category? parent,
   }) async {
     final isEditing = category != null;
     if (_busy || (isEditing && category.isUncategorized)) {
       return;
     }
 
+    final isSubcategory = parent != null || (category?.isSubcategory ?? false);
     final result = await showModalBottomSheet<String>(
       context: context,
       isScrollControlled: true,
@@ -51,7 +53,11 @@ class _CategoryManagementScreenState
       barrierColor: NarooColors.barrier,
       builder: (context) {
         return _CategoryEditorSheet(
-          title: isEditing ? '카테고리 수정' : '${type.label} 카테고리 추가',
+          title: isEditing
+              ? (isSubcategory ? '소분류 수정' : '카테고리 수정')
+              : parent != null
+              ? '‘${parent.name}’ 소분류 추가'
+              : '${type.label} 카테고리 추가',
           initialName: category?.name ?? '',
           submitLabel: isEditing ? '저장' : '추가',
         );
@@ -71,7 +77,7 @@ class _CategoryManagementScreenState
       } else {
         await ref
             .read(categoriesProvider.notifier)
-            .create(type: type, name: result);
+            .create(type: type, name: result, parentId: parent?.id);
       }
     } catch (_) {
       if (!mounted) {
@@ -84,15 +90,25 @@ class _CategoryManagementScreenState
     }
   }
 
-  Future<void> _delete(Category category) async {
+  Future<void> _delete(Category category, List<Category> categories) async {
     if (_busy || category.isUncategorized) return;
+    final parentName = categories
+        .where((item) => item.id == category.parentId)
+        .firstOrNull
+        ?.name;
+    final hasChildren = categories.any((item) => item.parentId == category.id);
+    final message = parentName != null
+        ? '소분류에 포함된 내용은 ‘$parentName’에 남습니다.'
+        : hasChildren
+        ? '소분류도 함께 삭제되고, 카테고리에 포함된 내용은 모두 미분류로 변경됩니다.'
+        : '카테고리에 포함된 내용은 모두 미분류로 변경됩니다.';
     setState(() => _busy = true);
     try {
       final confirmed = await showDialog<bool>(
         context: context,
         builder: (context) => AlertDialog(
           title: Text('‘${category.name}’을 삭제할까요?'),
-          content: const Text('카테고리에 포함된 내용은 모두 미분류로 변경됩니다.'),
+          content: Text(message),
           actionsAlignment: MainAxisAlignment.spaceBetween,
           actions: [
             FilledButton(
@@ -118,6 +134,20 @@ class _CategoryManagementScreenState
     } finally {
       if (mounted) setState(() => _busy = false);
     }
+  }
+
+  Widget _buildList(List<Category> categories, CategoryType type) {
+    final items = categories
+        .where((item) => item.type == type)
+        .toList(growable: false);
+    return _CategoryList(
+      categories: items,
+      onEdit: (category) =>
+          _showEditor(type: category.type, category: category),
+      onAddChild: (parent) => _showEditor(type: parent.type, parent: parent),
+      onDelete: (category) => _delete(category, items),
+      busy: _busy,
+    );
   }
 
   @override
@@ -153,24 +183,8 @@ class _CategoryManagementScreenState
           return TabBarView(
             controller: _tabController,
             children: [
-              _CategoryList(
-                categories: categories
-                    .where((item) => item.type == CategoryType.expense)
-                    .toList(growable: false),
-                onEdit: (category) =>
-                    _showEditor(type: category.type, category: category),
-                onDelete: _delete,
-                busy: _busy,
-              ),
-              _CategoryList(
-                categories: categories
-                    .where((item) => item.type == CategoryType.income)
-                    .toList(growable: false),
-                onEdit: (category) =>
-                    _showEditor(type: category.type, category: category),
-                onDelete: _delete,
-                busy: _busy,
-              ),
+              _buildList(categories, CategoryType.expense),
+              _buildList(categories, CategoryType.income),
             ],
           );
         },
@@ -239,12 +253,14 @@ class _CategoryList extends StatelessWidget {
   const _CategoryList({
     required this.categories,
     required this.onEdit,
+    required this.onAddChild,
     required this.onDelete,
     required this.busy,
   });
 
   final List<Category> categories;
   final ValueChanged<Category> onEdit;
+  final ValueChanged<Category> onAddChild;
   final ValueChanged<Category> onDelete;
   final bool busy;
 
@@ -254,6 +270,13 @@ class _CategoryList extends StatelessWidget {
       return const Center(child: Text('카테고리가 없어요.'));
     }
 
+    final rows = [
+      for (final parent in categories.where((item) => !item.isSubcategory)) ...[
+        parent,
+        ...categories.where((item) => item.parentId == parent.id),
+      ],
+    ];
+
     return ListView.separated(
       padding: const EdgeInsets.fromLTRB(
         NarooSpacing.space20,
@@ -261,18 +284,29 @@ class _CategoryList extends StatelessWidget {
         NarooSpacing.space20,
         88,
       ),
-      itemCount: categories.length,
+      itemCount: rows.length,
       separatorBuilder: (_, _) => const Divider(height: 1),
       itemBuilder: (context, index) {
-        final category = categories[index];
+        final category = rows[index];
         return ListTile(
-          contentPadding: EdgeInsets.zero,
+          contentPadding: EdgeInsets.only(
+            left: category.isSubcategory ? NarooSpacing.space24 : 0,
+          ),
           title: Text(category.name),
           trailing: category.isUncategorized
               ? null
               : Row(
                   mainAxisSize: MainAxisSize.min,
                   children: [
+                    if (!category.isSubcategory)
+                      IconButton(
+                        tooltip: '소분류 추가',
+                        onPressed: busy ? null : () => onAddChild(category),
+                        icon: const Icon(
+                          NarooIcons.add,
+                          size: NarooIcons.action,
+                        ),
+                      ),
                     IconButton(
                       tooltip: '수정',
                       onPressed: busy ? null : () => onEdit(category),

@@ -24,10 +24,20 @@ class FakeCategoryRepository implements CategoryRepository {
     required String householdId,
     required CategoryType type,
     required String name,
+    String? parentId,
   }) async {
     final trimmed = name.trim();
     if (trimmed.isEmpty) {
       throw ArgumentError('카테고리 이름을 입력해 주세요.');
+    }
+    if (parentId != null) {
+      final parent = _items.singleWhere((item) => item.id == parentId);
+      if (parent.isSubcategory ||
+          parent.isUncategorized ||
+          parent.type != type ||
+          parent.householdId != householdId) {
+        throw StateError('소분류를 추가할 수 없는 카테고리입니다.');
+      }
     }
 
     final category = Category(
@@ -35,6 +45,7 @@ class FakeCategoryRepository implements CategoryRepository {
       householdId: householdId,
       type: type,
       name: trimmed,
+      parentId: parentId,
     );
     _items.add(category);
     return category;
@@ -70,6 +81,8 @@ class FakeCategoryRepository implements CategoryRepository {
     final index = _items.indexWhere((item) => item.id == categoryId);
     if (index < 0) throw StateError('category not found');
     if (_items[index].isUncategorized) throw StateError('미분류는 삭제할 수 없습니다.');
-    _items.removeAt(index);
+    _items.removeWhere(
+      (item) => item.id == categoryId || item.parentId == categoryId,
+    );
   }
 }

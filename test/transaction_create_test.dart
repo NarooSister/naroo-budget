@@ -8,6 +8,7 @@ import 'package:naroo/core/session/app_session.dart';
 import 'package:naroo/data/models/category.dart';
 import 'package:naroo/data/models/household_member.dart';
 import 'package:naroo/data/models/profile.dart';
+import 'package:naroo/data/models/transaction.dart';
 import 'package:naroo/data/repository_providers.dart';
 
 import 'fake_category_repository.dart';
@@ -158,6 +159,154 @@ void main() {
 
     expect(transactions.createCalls, 1);
   });
+
+  testWidgets('미분류는 선택지에 없고 소분류는 선택 대분류에 맞춰 바뀐다', (tester) async {
+    tester.view.physicalSize = const Size(390, 844);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+    final transactions = FakeTransactionRepository();
+    await _pumpApp(tester, transactions, _subcategoryFixtures);
+
+    await tester.tap(find.byTooltip('기록 추가'));
+    await tester.pumpAndSettle();
+    expect(find.text('미분류'), findsNothing);
+    expect(find.text('소분류 (선택)'), findsNothing);
+    expect(find.text('장보기'), findsNothing);
+
+    await tester.enterText(find.byType(TextField).first, '9000');
+    await tester.tap(find.text('식비'));
+    await tester.pumpAndSettle();
+    expect(find.text('소분류 (선택)'), findsOneWidget);
+    await tester.tap(find.text('장보기'));
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.text('카페'));
+    await tester.pumpAndSettle();
+    expect(find.text('장보기'), findsNothing);
+    await tester.tap(find.text('식비'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('저장'));
+    await tester.pumpAndSettle();
+    expect(transactions.created.single.categoryId, 'food');
+    expect(transactions.created.single.subcategoryId, isNull);
+
+    await tester.tap(find.byTooltip('기록 추가'));
+    await tester.pumpAndSettle();
+    await tester.enterText(find.byType(TextField).first, '9000');
+    await tester.tap(find.text('식비'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('외식'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('외식'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('외식'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('저장'));
+    await tester.pumpAndSettle();
+    expect(transactions.created.last.categoryId, 'food');
+    expect(transactions.created.last.subcategoryId, 'eating-out');
+  });
+
+  testWidgets('미분류 기존 기록은 수정 시에만 미분류를 유지할 수 있다', (tester) async {
+    final transactions = FakeTransactionRepository([
+      TransactionListItem(
+        transaction: Transaction(
+          id: 'tx-1',
+          householdId: 'household-1',
+          memberId: 'member-1',
+          type: CategoryType.expense,
+          amount: 3000,
+          categoryId: 'unc',
+          occurredOn: SeoulDate.today(),
+        ),
+        categoryName: '미분류',
+      ),
+    ]);
+    await _pumpApp(tester, transactions, _subcategoryFixtures);
+
+    await tester.tap(find.widgetWithText(NavigationDestination, '내역'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('미분류'));
+    await tester.pumpAndSettle();
+    expect(find.widgetWithText(AppBar, '기록 수정'), findsOneWidget);
+    expect(find.text('미분류'), findsOneWidget);
+    await tester.tap(find.text('수정 저장'));
+    await tester.pumpAndSettle();
+    expect(transactions.updateCalls, 1);
+    expect(
+      (await transactions.findById('tx-1'))?.categoryId,
+      'unc',
+    );
+  });
+}
+
+const _subcategoryFixtures = [
+  Category(
+    id: 'food',
+    householdId: 'household-1',
+    type: CategoryType.expense,
+    name: '식비',
+  ),
+  Category(
+    id: 'groceries',
+    householdId: 'household-1',
+    type: CategoryType.expense,
+    name: '장보기',
+    parentId: 'food',
+  ),
+  Category(
+    id: 'eating-out',
+    householdId: 'household-1',
+    type: CategoryType.expense,
+    name: '외식',
+    parentId: 'food',
+  ),
+  Category(
+    id: 'cafe',
+    householdId: 'household-1',
+    type: CategoryType.expense,
+    name: '카페',
+  ),
+  Category(
+    id: 'unc',
+    householdId: 'household-1',
+    type: CategoryType.expense,
+    name: '미분류',
+    isUncategorized: true,
+  ),
+];
+
+Future<void> _pumpApp(
+  WidgetTester tester,
+  FakeTransactionRepository transactions,
+  List<Category> categories,
+) async {
+  await tester.pumpWidget(
+    ProviderScope(
+      overrides: [
+        appSessionProvider.overrideWith(
+          () => _FakeAppSessionNotifier(
+            const AppSession.ready(
+              userId: 'user-1',
+              email: 'user@example.com',
+              profile: _profile,
+              member: _member,
+            ),
+          ),
+        ),
+        categoryRepositoryProvider.overrideWithValue(
+          FakeCategoryRepository(categories),
+        ),
+        householdMemberRepositoryProvider.overrideWithValue(
+          FakeHouseholdMemberRepository([_member]),
+        ),
+        transactionRepositoryProvider.overrideWithValue(transactions),
+      ],
+      child: const NarooApp(),
+    ),
+  );
+  await tester.pumpAndSettle();
 }
 
 class _FakeAppSessionNotifier extends AppSessionNotifier {

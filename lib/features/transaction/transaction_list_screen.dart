@@ -129,8 +129,15 @@ class TransactionListScreen extends ConsumerWidget {
                               leading: NarooCategoryBadge(
                                 name: item.categoryName,
                               ),
-                              title: Text(item.title),
-                              subtitle: Text(item.attributionLabel),
+                              title: Text(item.categoryLabel),
+                              subtitle: Text(
+                                [
+                                  ?item.memoText,
+                                  item.attributionLabel,
+                                ].join(' · '),
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                              ),
                               trailing: Text(
                                 MoneyFormat.signed(
                                   item.transaction.type,

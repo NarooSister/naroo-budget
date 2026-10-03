@@ -12,6 +12,7 @@ class Transaction {
     required this.type,
     required this.amount,
     required this.categoryId,
+    this.subcategoryId,
     required this.occurredOn,
     this.memo,
   });
@@ -23,6 +24,7 @@ class Transaction {
   final CategoryType type;
   final int amount;
   final String categoryId;
+  final String? subcategoryId;
   final DateTime occurredOn;
   final String? memo;
 
@@ -37,6 +39,7 @@ class Transaction {
       type: CategoryType.fromDb(json['type'] as String),
       amount: json['amount'] as int,
       categoryId: json['category_id'] as String,
+      subcategoryId: json['subcategory_id'] as String?,
       occurredOn: _parseDate(json['occurred_on'] as String),
       memo: json['memo'] as String?,
     );
@@ -47,11 +50,13 @@ class TransactionListItem {
   const TransactionListItem({
     required this.transaction,
     required this.categoryName,
+    this.subcategoryName,
     this.memberName,
   });
 
   final Transaction transaction;
   final String categoryName;
+  final String? subcategoryName;
   final String? memberName;
 
   String get attributionLabel =>
@@ -59,16 +64,18 @@ class TransactionListItem {
       ? '공용'
       : memberName ?? '구성원';
 
-  String get title {
+  String get categoryLabel => subcategoryName == null
+      ? categoryName
+      : '$categoryName · $subcategoryName';
+
+  String? get memoText {
     final memo = transaction.memo?.trim();
-    if (memo != null && memo.isNotEmpty) {
-      return memo;
-    }
-    return categoryName;
+    return memo == null || memo.isEmpty ? null : memo;
   }
 
   factory TransactionListItem.fromJson(Map<String, dynamic> json) {
     final categories = json['categories'];
+    final subcategory = json['subcategory'];
     final members = json['household_members'];
 
     return TransactionListItem(
@@ -76,6 +83,9 @@ class TransactionListItem {
       categoryName: categories is Map<String, dynamic>
           ? (categories['name'] as String? ?? '카테고리')
           : '카테고리',
+      subcategoryName: subcategory is Map<String, dynamic>
+          ? subcategory['name'] as String?
+          : null,
       memberName: members is Map<String, dynamic>
           ? members['display_name'] as String?
           : null,
@@ -93,6 +103,7 @@ class NewTransaction {
     required this.type,
     required this.amount,
     required this.categoryId,
+    this.subcategoryId,
     required this.occurredOn,
     this.memo,
   });
@@ -103,6 +114,7 @@ class NewTransaction {
   final CategoryType type;
   final int amount;
   final String categoryId;
+  final String? subcategoryId;
   final DateTime occurredOn;
   final String? memo;
 }

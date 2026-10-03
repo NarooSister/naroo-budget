@@ -10,6 +10,7 @@ abstract class CategoryRepository {
     required String householdId,
     required CategoryType type,
     required String name,
+    String? parentId,
   });
 
   Future<Category> rename({required String categoryId, required String name});

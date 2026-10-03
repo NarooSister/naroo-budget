@@ -166,12 +166,18 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
                     contentPadding: EdgeInsets.zero,
                     leading: NarooCategoryBadge(name: item.categoryName),
                     title: Text(
-                      item.title,
+                      item.categoryLabel,
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                     ),
                     subtitle: Text(
-                      '${SeoulDate.daySectionLabel(item.transaction.occurredOn)} · ${item.attributionLabel}',
+                      [
+                        ?item.memoText,
+                        SeoulDate.daySectionLabel(item.transaction.occurredOn),
+                        item.attributionLabel,
+                      ].join(' · '),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
                     ),
                     trailing: Text(
                       '${MoneyFormat.signed(item.transaction.type, item.transaction.amount)}원',

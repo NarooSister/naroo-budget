@@ -3,8 +3,8 @@
 ## 유지할 기준
 
 - 가계부별 독립 카테고리와 기존 UUID를 유지한다. 초기 추천값은 사용자가 수정·삭제한다. 공통 사전/가계부 설정 테이블 분리는 필요하지 않다.
-- 카테고리 이름은 참조 키가 아니다. 동명 허용 정책은 소분류 구현 전에 정하며 자동 병합하지 않는다. 미분류는 이름이 아닌 시스템 식별값으로 판별한다.
-- profiles/household_members는 계정과 귀속의 서로 다른 역할이다. 이름 동기화는 [이름 계획](profile-payment.md), 분류 관계는 [소분류 계획](subcategories.md), 유효 설정 이력은 [예산 계획](monthly-budget-inheritance.md)을 따른다.
+- 카테고리 이름은 참조 키가 아니며 같은 이름을 허용하고 자동 병합하지 않는다. 미분류는 이름이 아닌 시스템 식별값으로 판별한다.
+- profiles/household_members는 계정과 귀속의 서로 다른 역할이다. 이름 동기화는 [이름 계획](profile-payment.md), 유효 설정 이력은 [예산 계획](monthly-budget-inheritance.md)을 따른다.
 
 ## 기능 구현 시 결정
 

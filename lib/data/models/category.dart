@@ -24,6 +24,7 @@ class Category {
     required this.type,
     required this.name,
     this.isUncategorized = false,
+    this.parentId,
   });
 
   final String id;
@@ -31,6 +32,9 @@ class Category {
   final CategoryType type;
   final String name;
   final bool isUncategorized;
+  final String? parentId;
+
+  bool get isSubcategory => parentId != null;
 
   factory Category.fromJson(Map<String, dynamic> json) {
     return Category(
@@ -39,6 +43,7 @@ class Category {
       type: CategoryType.fromDb(json['type'] as String),
       name: json['name'] as String,
       isUncategorized: json['is_uncategorized'] as bool,
+      parentId: json['parent_id'] as String?,
     );
   }
 
@@ -49,6 +54,7 @@ class Category {
       type: type,
       name: name ?? this.name,
       isUncategorized: isUncategorized,
+      parentId: parentId,
     );
   }
 }

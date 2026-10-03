@@ -35,6 +35,8 @@ class _TransactionCreateScreenState
 
   CategoryType _type = CategoryType.expense;
   String? _categoryId;
+  String? _subcategoryId;
+  String? _existingCategoryId;
   String? _memberId;
   String? _existingMemberId;
   AttributionKind _attributionKind = AttributionKind.member;
@@ -75,6 +77,8 @@ class _TransactionCreateScreenState
     setState(() {
       _type = existing.type;
       _categoryId = existing.categoryId;
+      _subcategoryId = existing.subcategoryId;
+      _existingCategoryId = existing.categoryId;
       _memberId = existing.memberId;
       _existingMemberId = existing.memberId;
       _attributionKind = existing.attributionKind;
@@ -210,6 +214,7 @@ class _TransactionCreateScreenState
       type: _type,
       amount: amount,
       categoryId: categoryId,
+      subcategoryId: _subcategoryId,
       occurredOn: _occurredOn,
       memo: _memoController.text,
     );
@@ -302,6 +307,7 @@ class _TransactionCreateScreenState
                                   setState(() {
                                     _type = value.first;
                                     _categoryId = null;
+                                    _subcategoryId = null;
                                   });
                                 },
                         ),
@@ -329,17 +335,64 @@ class _TransactionCreateScreenState
                               const Center(child: CircularProgressIndicator()),
                           error: (_, _) => const Text('카테고리를 불러오지 못했습니다.'),
                           data: (categories) {
-                            if (categories.isEmpty) {
+                            // Uncategorized is only kept for an existing record.
+                            final topLevel = categories
+                                .where(
+                                  (item) =>
+                                      !item.isSubcategory &&
+                                      (!item.isUncategorized ||
+                                          item.id == _existingCategoryId),
+                                )
+                                .toList(growable: false);
+                            if (topLevel.isEmpty) {
                               return const Text('선택할 카테고리가 없어요.');
                             }
+                            final subcategories = _categoryId == null
+                                ? const <Category>[]
+                                : categories
+                                      .where(
+                                        (item) => item.parentId == _categoryId,
+                                      )
+                                      .toList(growable: false);
 
-                            return TransactionCategoryPicker(
-                              categories: categories,
-                              selectedCategoryId: _categoryId,
-                              isBusy: _isBusy,
-                              onSelected: (id) {
-                                setState(() => _categoryId = id);
-                              },
+                            return Column(
+                              crossAxisAlignment: CrossAxisAlignment.stretch,
+                              children: [
+                                TransactionCategoryPicker(
+                                  categories: topLevel,
+                                  selectedCategoryId: _categoryId,
+                                  isBusy: _isBusy,
+                                  onSelected: (id) {
+                                    if (id == _categoryId) return;
+                                    setState(() {
+                                      _categoryId = id;
+                                      _subcategoryId = null;
+                                    });
+                                  },
+                                ),
+                                if (subcategories.isNotEmpty) ...[
+                                  const SizedBox(height: NarooSpacing.space16),
+                                  Text(
+                                    '소분류 (선택)',
+                                    style: NarooText.caption.copyWith(
+                                      color: NarooColors.textSecondary,
+                                    ),
+                                  ),
+                                  const SizedBox(height: NarooSpacing.space8),
+                                  TransactionCategoryPicker(
+                                    categories: subcategories,
+                                    selectedCategoryId: _subcategoryId,
+                                    isBusy: _isBusy,
+                                    onSelected: (id) {
+                                      setState(() {
+                                        _subcategoryId = id == _subcategoryId
+                                            ? null
+                                            : id;
+                                      });
+                                    },
+                                  ),
+                                ],
+                              ],
                             );
                           },
                         ),

@@ -101,6 +101,37 @@ void main() {
     );
   });
 
+  test('대분류·소분류 이름을 FK를 구분해 조회한다', () async {
+    final repository = await repositoryFor((request) async {
+      final select = request.uri.queryParameters['select']!;
+      expect(select, contains('categories!transactions_category_id_fkey(name)'));
+      expect(
+        select,
+        contains('subcategory:categories!transactions_subcategory_id_fkey(name)'),
+      );
+      if (request.uri.queryParameters['offset'] != '0') {
+        await _respond(request, []);
+        return;
+      }
+      await _respond(request, [
+        {
+          ..._row(0),
+          'subcategory_id': 'eating-out',
+          'subcategory': {'name': '외식'},
+        },
+        _row(1),
+      ]);
+    });
+    final items = await repository.listByMonth(
+      householdId: 'household-1',
+      month: DateTime(2024, 2),
+    );
+    expect(items.first.transaction.subcategoryId, 'eating-out');
+    expect(items.first.categoryLabel, '식비 · 외식');
+    expect(items.last.transaction.subcategoryId, isNull);
+    expect(items.last.categoryLabel, '식비');
+  });
+
   for (final exists in [false, true]) {
     test('삭제 결과가 ${exists ? '있을' : '없을'} 때 성공 여부를 구분한다', () async {
       final repository = await repositoryFor((request) async {
@@ -163,6 +194,7 @@ void main() {
             'type': 'income',
             'amount': NewTransaction.maxAmount,
             'category_id': 'salary',
+            'subcategory_id': null,
             'occurred_on': '2024-12-31',
             'memo': memo == null || memo.trim().isEmpty ? null : memo.trim(),
           };

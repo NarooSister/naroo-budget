@@ -89,7 +89,11 @@ class SupabaseTransactionRepository implements TransactionRepository {
     while (true) {
       var query = client
           .from('transactions')
-          .select('*, categories(name), household_members(display_name)')
+          .select(
+            '*, categories!transactions_category_id_fkey(name), '
+            'subcategory:categories!transactions_subcategory_id_fkey(name), '
+            'household_members(display_name)',
+          )
           .eq('household_id', householdId)
           .gte('occurred_on', SeoulDate.format(start))
           .lte('occurred_on', SeoulDate.format(end));
@@ -122,6 +126,7 @@ class SupabaseTransactionRepository implements TransactionRepository {
       'type': input.type.dbValue,
       'amount': input.amount,
       'category_id': input.categoryId,
+      'subcategory_id': input.subcategoryId,
       'occurred_on': SeoulDate.format(input.occurredOn),
       'memo': (memo == null || memo.isEmpty) ? null : memo,
     };

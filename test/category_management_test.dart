@@ -93,6 +93,60 @@ void main() {
     );
   });
 
+  testWidgets('소분류를 추가하고 대분류 삭제 시 소분류도 함께 삭제한다', (tester) async {
+    final repository = FakeCategoryRepository([
+      const Category(
+        id: 'food',
+        householdId: 'household-1',
+        type: CategoryType.expense,
+        name: '식비',
+      ),
+      const Category(
+        id: 'unc',
+        householdId: 'household-1',
+        type: CategoryType.expense,
+        name: '미분류',
+        isUncategorized: true,
+      ),
+    ]);
+    await _pumpManagement(tester, repository);
+    expect(find.byTooltip('소분류 추가'), findsOneWidget);
+
+    await tester.tap(find.byTooltip('소분류 추가'));
+    await tester.pumpAndSettle();
+    expect(find.text('‘식비’ 소분류 추가'), findsOneWidget);
+    await tester.enterText(find.byType(TextField), '식비');
+    await tester.tap(find.text('추가'));
+    await tester.pumpAndSettle();
+    final child = (await repository.listByHousehold(
+      'household-1',
+    )).singleWhere((item) => item.isSubcategory);
+    expect(child.parentId, 'food');
+    expect(child.name, '식비');
+    expect(find.text('식비'), findsNWidgets(2));
+    expect(find.byTooltip('소분류 추가'), findsOneWidget);
+
+    await tester.tap(find.byTooltip('삭제').last);
+    await tester.pumpAndSettle();
+    expect(find.text('소분류에 포함된 내용은 ‘식비’에 남습니다.'), findsOneWidget);
+    await tester.tap(find.text('취소'));
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.byTooltip('삭제').first);
+    await tester.pumpAndSettle();
+    expect(
+      find.text('소분류도 함께 삭제되고, 카테고리에 포함된 내용은 모두 미분류로 변경됩니다.'),
+      findsOneWidget,
+    );
+    await tester.tap(find.widgetWithText(TextButton, '삭제'));
+    await tester.pumpAndSettle();
+    expect(find.text('식비'), findsNothing);
+    expect(
+      (await repository.listByHousehold('household-1')).single.id,
+      'unc',
+    );
+  });
+
   testWidgets('편집 취소와 저장·삭제·목록 오류를 사용자에게 표시한다', (tester) async {
     final repository = _FailingCategoryRepository([
       const Category(

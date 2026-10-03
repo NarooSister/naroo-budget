@@ -44,6 +44,7 @@ class FakeTransactionRepository implements TransactionRepository {
       type: input.type,
       amount: input.amount,
       categoryId: input.categoryId,
+      subcategoryId: input.subcategoryId,
       occurredOn: input.occurredOn,
       memo: input.memo,
     );
@@ -75,12 +76,14 @@ class FakeTransactionRepository implements TransactionRepository {
       type: input.type,
       amount: input.amount,
       categoryId: input.categoryId,
+      subcategoryId: input.subcategoryId,
       occurredOn: input.occurredOn,
       memo: input.memo,
     );
     _items[index] = TransactionListItem(
       transaction: updated,
       categoryName: _items[index].categoryName,
+      subcategoryName: _items[index].subcategoryName,
       memberName: _items[index].memberName,
     );
     return updated;

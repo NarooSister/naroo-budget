@@ -52,7 +52,7 @@ void main() {
 
     await tester.tap(find.widgetWithText(NavigationDestination, '내역'));
     await tester.pumpAndSettle();
-    await tester.tap(find.text('점심'));
+    await tester.tap(find.textContaining('점심'));
     await tester.pumpAndSettle();
 
     expect(find.widgetWithText(AppBar, '기록 수정'), findsOneWidget);
@@ -93,7 +93,7 @@ void main() {
 
     await tester.tap(find.widgetWithText(NavigationDestination, '내역'));
     await tester.pumpAndSettle();
-    await tester.tap(find.text('점심'));
+    await tester.tap(find.textContaining('점심'));
     await tester.pumpAndSettle();
 
     expect(find.widgetWithText(AppBar, '기록 수정'), findsOneWidget);
@@ -109,7 +109,7 @@ void main() {
     expect(transactions.deleteCalls, 1);
     expect(transactions.deletedIds, ['tx-1']);
     expect(find.text('아직 기록이 없어요.'), findsOneWidget);
-    expect(find.text('점심'), findsNothing);
+    expect(find.textContaining('점심'), findsNothing);
   });
 
   testWidgets('삭제 확인에서 취소하면 삭제되지 않는다', (tester) async {
@@ -139,7 +139,7 @@ void main() {
 
     await tester.tap(find.widgetWithText(NavigationDestination, '내역'));
     await tester.pumpAndSettle();
-    await tester.tap(find.text('점심'));
+    await tester.tap(find.textContaining('점심'));
     await tester.pumpAndSettle();
 
     await tester.tap(find.byTooltip('삭제'));

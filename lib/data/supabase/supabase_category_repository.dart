@@ -36,6 +36,7 @@ class SupabaseCategoryRepository implements CategoryRepository {
     required String householdId,
     required CategoryType type,
     required String name,
+    String? parentId,
   }) async {
     final client = _requireClient();
     final trimmed = _validateName(name);
@@ -46,6 +47,7 @@ class SupabaseCategoryRepository implements CategoryRepository {
           'household_id': householdId,
           'type': type.dbValue,
           'name': trimmed,
+          'parent_id': ?parentId,
         })
         .select()
         .single();

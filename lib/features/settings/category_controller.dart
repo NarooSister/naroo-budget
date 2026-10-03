@@ -35,6 +35,7 @@ class CategoriesNotifier extends AsyncNotifier<List<Category>> {
   Future<void> create({
     required CategoryType type,
     required String name,
+    String? parentId,
   }) async {
     final session = await ref.read(appSessionProvider.future);
     final householdId = session.member?.householdId;
@@ -44,7 +45,12 @@ class CategoriesNotifier extends AsyncNotifier<List<Category>> {
 
     await ref
         .read(categoryRepositoryProvider)
-        .create(householdId: householdId, type: type, name: name);
+        .create(
+          householdId: householdId,
+          type: type,
+          name: name,
+          parentId: parentId,
+        );
     ref.read(categoryChangesProvider.notifier).changed();
     await refresh();
   }

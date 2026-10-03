@@ -50,6 +50,7 @@ void main() {
           memo: '점심',
         ),
         categoryName: '식비',
+        subcategoryName: '외식',
       ),
       TransactionListItem(
         transaction: Transaction(
@@ -68,9 +69,11 @@ void main() {
     final groups = groupTransactionsByDate(items, today: today);
     expect(groups, hasLength(2));
     expect(groups.first.label, '오늘');
-    expect(groups.first.items.single.title, '점심');
+    expect(groups.first.items.single.categoryLabel, '식비 · 외식');
+    expect(groups.first.items.single.memoText, '점심');
     expect(groups.last.label, '9월 27일');
-    expect(groups.last.items.single.title, '카페/간식');
+    expect(groups.last.items.single.categoryLabel, '카페/간식');
+    expect(groups.last.items.single.memoText, isNull);
   });
 
   testWidgets('내역에서 월/필터/수정 진입이 동작한다', (tester) async {
@@ -159,15 +162,15 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.text('2026년 9월'), findsOneWidget);
-    expect(find.text('점심'), findsOneWidget);
+    expect(find.text('식비'), findsOneWidget);
+    expect(find.text('점심 · 테스트 사용자'), findsOneWidget);
     expect(find.text('-12,000'), findsOneWidget);
     expect(find.text('월급'), findsOneWidget);
     expect(find.text('+3,500,000'), findsOneWidget);
-    expect(find.text('식비'), findsNothing);
 
     await tester.tap(find.text('지출'));
     await tester.pumpAndSettle();
-    expect(find.text('점심'), findsOneWidget);
+    expect(find.text('점심 · 테스트 사용자'), findsOneWidget);
     expect(find.text('월급'), findsNothing);
 
     await tester.tap(find.byTooltip('이전 달'));
@@ -179,7 +182,7 @@ void main() {
     await tester.pumpAndSettle();
     await tester.tap(find.text('전체'));
     await tester.pumpAndSettle();
-    await tester.tap(find.text('점심'));
+    await tester.tap(find.text('점심 · 테스트 사용자'));
     await tester.pumpAndSettle();
 
     expect(find.widgetWithText(AppBar, '기록 수정'), findsOneWidget);

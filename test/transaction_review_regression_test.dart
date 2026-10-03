@@ -85,7 +85,7 @@ void main() {
         ..missingOnRead = missing;
       await _pumpApp(tester, repository);
       await _openTab(tester, '내역');
-      await tester.tap(find.text('기존 기록'));
+      await tester.tap(find.textContaining('기존 기록'));
       await tester.pumpAndSettle();
       expect(find.byType(TextField), findsNothing);
       expect(
@@ -141,7 +141,7 @@ void main() {
       await tester.pumpAndSettle();
       await tester.tap(find.text('지출'));
       await tester.pumpAndSettle();
-      expect(find.text('기존 기록'), findsOneWidget);
+      expect(find.textContaining('기존 기록'), findsOneWidget);
       await _openTab(tester, '홈');
 
       // Change the fake server directly, without invalidating any app provider.
@@ -166,7 +166,7 @@ void main() {
       );
       expect(filter.selected, {TransactionListFilter.expense});
       expect(
-        find.text(change == 'create' ? '상대방 추가' : '상대방 수정'),
+        find.textContaining(change == 'create' ? '상대방 추가' : '상대방 수정'),
         change == 'delete' ? findsNothing : findsOneWidget,
       );
       if (change == 'delete') {
@@ -184,7 +184,7 @@ void main() {
         await _openTab(tester, '홈');
         await tester.tap(find.byTooltip('기록 추가'));
       } else {
-        await tester.tap(find.text('기존 기록'));
+        await tester.tap(find.textContaining('기존 기록'));
       }
       await tester.pumpAndSettle();
       repository.delay = const Duration(seconds: 3);
@@ -220,7 +220,7 @@ void main() {
       expect(tester.takeException(), isNull);
       expect(repository.listCalls, greaterThan(callsBeforeCompletion));
       if (action == 'delete') {
-        expect(find.text('기존 기록'), findsNothing);
+        expect(find.textContaining('기존 기록'), findsNothing);
         expect(repository.deleteCalls, 1);
       } else {
         expect(find.text('-15,000'), findsOneWidget);
@@ -236,7 +236,7 @@ void main() {
     final repository = FakeTransactionRepository([_item()]);
     await _pumpApp(tester, repository);
     await _openTab(tester, '내역');
-    await tester.tap(find.text('기존 기록'));
+    await tester.tap(find.textContaining('기존 기록'));
     await tester.pumpAndSettle();
     repository.delay = const Duration(seconds: 3);
     await tester.enterText(find.byType(TextField).first, '15000');
@@ -244,7 +244,7 @@ void main() {
     await tester.pump();
     await tester.pageBack();
     await tester.pumpAndSettle();
-    await tester.tap(find.text('기존 기록'));
+    await tester.tap(find.textContaining('기존 기록'));
     await tester.pump(const Duration(milliseconds: 400));
 
     // Loading this editor again must not unlock the save button.
@@ -268,7 +268,7 @@ void main() {
       ]);
       await _pumpApp(tester, repository);
       await _openTab(tester, '내역');
-      await tester.tap(find.text('기존 기록'));
+      await tester.tap(find.textContaining('기존 기록'));
       await tester.pumpAndSettle();
 
       expect(find.widgetWithText(NarooCategoryChip, '식비'), findsOneWidget);
