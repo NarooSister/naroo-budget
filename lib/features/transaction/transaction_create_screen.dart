@@ -173,7 +173,7 @@ class _TransactionCreateScreenState
     final member = session?.member;
     if (session == null || member == null) {
       setState(() {
-        _errorMessage = 'Household에 연결되지 않았습니다.';
+        _errorMessage = '가계부에 연결되지 않았습니다.';
       });
       return;
     }

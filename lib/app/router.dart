@@ -7,6 +7,7 @@ import '../features/auth/household_connection_screen.dart';
 import '../features/auth/login_screen.dart';
 import '../features/auth/session_loading_screen.dart';
 import '../features/home/home_screen.dart';
+import '../features/profile/profile_name_screen.dart';
 import '../features/settings/category_management_screen.dart';
 import '../features/settings/settings_screen.dart';
 import '../features/transaction/transaction_create_screen.dart';
@@ -32,6 +33,7 @@ final appRouterProvider = Provider<GoRouter>((ref) {
       final isLogin = location == AppRoutes.login;
       final isLoadingRoute = location == AppRoutes.loading;
       final isHouseholdRequired = location == AppRoutes.householdRequired;
+      final isProfileName = location == AppRoutes.profileName;
 
       // Keep previous session during refresh to avoid login flicker.
       if (!sessionAsync.hasValue) {
@@ -42,6 +44,9 @@ final appRouterProvider = Provider<GoRouter>((ref) {
       }
 
       final session = sessionAsync.requireValue;
+      if (session.needsName) {
+        return isProfileName ? null : AppRoutes.profileName;
+      }
 
       switch (session.status) {
         case AppSessionStatus.signedOut:
@@ -49,7 +54,7 @@ final appRouterProvider = Provider<GoRouter>((ref) {
         case AppSessionStatus.needsHousehold:
           return isHouseholdRequired ? null : AppRoutes.householdRequired;
         case AppSessionStatus.ready:
-          if (isLogin || isHouseholdRequired || isLoadingRoute) {
+          if (isLogin || isHouseholdRequired || isLoadingRoute || isProfileName) {
             return AppRoutes.home;
           }
           return null;
@@ -67,6 +72,10 @@ final appRouterProvider = Provider<GoRouter>((ref) {
       GoRoute(
         path: AppRoutes.householdRequired,
         builder: (context, state) => const HouseholdConnectionScreen(),
+      ),
+      GoRoute(
+        path: AppRoutes.profileName,
+        builder: (context, state) => const ProfileNameScreen(),
       ),
       GoRoute(
         path: AppRoutes.transactionNew,

@@ -2,6 +2,7 @@ abstract final class AppRoutes {
   static const loading = '/loading';
   static const login = '/login';
   static const householdRequired = '/household-required';
+  static const profileName = '/profile-name';
   static const home = '/home';
   static const transactions = '/transactions';
   static const transactionNew = '/transactions/new';

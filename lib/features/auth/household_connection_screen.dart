@@ -53,10 +53,10 @@ class _HouseholdConnectionScreenState
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              Text('Household에 아직 연결되지 않았어요.', style: NarooText.section),
+              Text('아직 가계부에 연결되지 않았어요.', style: NarooText.section),
               const SizedBox(height: NarooSpacing.space12),
               Text(
-                '가계부를 사용하려면 관리자가 Household에 연결해 주어야 합니다.',
+                '가계부를 사용하려면 관리자가 이 계정을 가계부에 연결해 주어야 합니다.',
                 style: NarooText.bodySecondary,
               ),
               if (displayName.isNotEmpty) ...[

@@ -52,7 +52,7 @@ void main() {
     );
     await tester.pumpAndSettle();
 
-    expect(find.text('Household에 아직 연결되지 않았어요.'), findsOneWidget);
+    expect(find.text('아직 가계부에 연결되지 않았어요.'), findsOneWidget);
     expect(find.text('로그아웃'), findsOneWidget);
   });
 

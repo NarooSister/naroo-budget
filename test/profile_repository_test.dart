@@ -3,6 +3,7 @@ import 'dart:convert';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
+import 'package:naroo/data/models/profile.dart';
 import 'package:naroo/data/repositories/profile_repository.dart';
 
 import 'support/supabase_test_server.dart';
@@ -94,6 +95,62 @@ void main() {
       );
     });
   }
+
+  test('기존 Profile의 이름 확인 여부를 구분한다', () async {
+    final client = await localSupabaseClient((request) async {
+      respond(request, [
+        {
+          'id': 'u1',
+          'display_name': '확인한 이름',
+          'name_confirmed_at': '2026-10-03T00:00:00Z',
+        },
+      ]);
+    });
+    final profile = await ProfileRepository(client).ensureProfile(_user());
+    expect(profile.isNameConfirmed, isTrue);
+    expect(
+      Profile.fromJson({'id': 'u1', 'display_name': '구글 이름'}).isNameConfirmed,
+      isFalse,
+    );
+  });
+
+  test('이름 저장은 공백을 제거해 RPC 한 번으로 요청한다', () async {
+    var calls = 0;
+    final client = await localSupabaseClient((request) async {
+      calls++;
+      expect(request.method, 'POST');
+      expect(request.uri.path, '/rest/v1/rpc/set_profile_name');
+      expect(jsonDecode(await utf8.decoder.bind(request).join()), {
+        'profile_name': '나루',
+      });
+      respond(request, {
+        'id': 'u1',
+        'display_name': '나루',
+        'name_confirmed_at': '2026-10-03T00:00:00Z',
+      });
+    });
+    final profile = await ProfileRepository(client).saveName('  나루 ');
+    expect(profile.displayName, '나루');
+    expect(profile.isNameConfirmed, isTrue);
+    expect(calls, 1);
+  });
+
+  test('잘못된 이름과 서버 오류는 저장 성공으로 처리하지 않는다', () async {
+    var calls = 0;
+    final client = await localSupabaseClient((request) async {
+      calls++;
+      respond(request, {'message': 'invalid', 'code': '23514'}, status: 400);
+    });
+    final repository = ProfileRepository(client);
+    await expectLater(repository.saveName('  '), throwsArgumentError);
+    await expectLater(repository.saveName('가' * 31), throwsArgumentError);
+    expect(calls, 0);
+    await expectLater(
+      repository.saveName('나루'),
+      throwsA(isA<PostgrestException>()),
+    );
+    expect(calls, 1);
+  });
 
   test('Supabase 미설정에서는 Profile 접근을 거부한다', () async {
     await expectLater(

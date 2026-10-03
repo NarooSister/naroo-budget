@@ -1,5 +1,6 @@
 import 'package:supabase_flutter/supabase_flutter.dart';
 
+import '../../core/profile_name_rules.dart';
 import '../models/profile.dart';
 
 class ProfileRepository {
@@ -28,6 +29,21 @@ class ProfileRepository {
         .single();
 
     return Profile.fromJson(created);
+  }
+
+  /// Also renames the caller's linked household member on the server.
+  Future<Profile> saveName(String name) async {
+    final client = _requireClient();
+    final error = ProfileNameRules.validate(name);
+    if (error != null) {
+      throw ArgumentError(error);
+    }
+
+    final row = await client.rpc<Map<String, dynamic>>(
+      'set_profile_name',
+      params: {'profile_name': name.trim()},
+    );
+    return Profile.fromJson(row);
   }
 
   String? _displayNameFor(User user) {

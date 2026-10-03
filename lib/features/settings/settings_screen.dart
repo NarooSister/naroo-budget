@@ -10,6 +10,7 @@ import '../../app/theme/naroo_text.dart';
 import '../../app/theme/naroo_widgets.dart';
 import '../../core/session/app_session.dart';
 import '../../data/models/household_member.dart';
+import '../profile/profile_name_form.dart';
 import 'member_name_sheet.dart';
 import 'settings_controller.dart';
 
@@ -28,6 +29,24 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
       context: context,
       isScrollControlled: true,
       builder: (_) => MemberNameSheet(member: member),
+    );
+  }
+
+  Future<void> _editProfileName(String? currentName) async {
+    await showModalBottomSheet<void>(
+      context: context,
+      isScrollControlled: true,
+      useSafeArea: true,
+      backgroundColor: NarooColors.surface,
+      barrierColor: NarooColors.barrier,
+      builder: (sheetContext) => NarooBottomSheet(
+        title: '이름 변경',
+        child: ProfileNameForm(
+          initialName: currentName ?? '',
+          submitLabel: '저장',
+          onSaved: () => Navigator.of(sheetContext).pop(),
+        ),
+      ),
     );
   }
 
@@ -82,11 +101,20 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
             NarooSpacing.space24,
           ),
           children: [
-            Text(displayName, style: NarooText.section),
-            if (email != null && email.isNotEmpty) ...[
-              const SizedBox(height: NarooSpacing.space4),
-              Text(email, style: NarooText.bodySecondary),
-            ],
+            ListTile(
+              contentPadding: EdgeInsets.zero,
+              title: Text(displayName, style: NarooText.section),
+              subtitle: email != null && email.isNotEmpty
+                  ? Text(email, style: NarooText.bodySecondary)
+                  : null,
+              trailing: IconButton(
+                tooltip: '이름 변경',
+                onPressed: session?.profile == null
+                    ? null
+                    : () => _editProfileName(session!.profile!.displayName),
+                icon: const Icon(NarooIcons.edit, size: NarooIcons.action),
+              ),
+            ),
             const SizedBox(height: NarooSpacing.space32),
             Text('가계부 구성원', style: NarooText.section),
             ref

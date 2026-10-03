@@ -49,6 +49,9 @@ class AppSession {
   final HouseholdMember? member;
 
   bool get isSignedIn => status != AppSessionStatus.signedOut;
+
+  /// Every signed-in user confirms a name once, even before household linking.
+  bool get needsName => isSignedIn && profile?.isNameConfirmed == false;
 }
 
 final authSessionProvider = StreamProvider<Session?>((ref) {
