@@ -45,7 +45,9 @@ UI는 Supabase 쿼리와 주요 업무 계산을 하지 않는다. Repository �
 - `validate_transaction_refs` 트리거가 거래의 구성원·카테고리가 같은 가계부인지 검사하고, 숨긴 구성원을 새로 지정하는 것을 막는다.
 - 구성원 쓰기 성공 시 `householdMemberChangesProvider`로 설정·입력 선택지·홈·내역을 갱신한다. 숨김은 기존 거래와 합계에 영향을 주지 않는다.
 - 거래 날짜는 PostgreSQL DATE, 서울 기준이다. created_at/updated_at은 거래 날짜 계산에 사용하지 않는다.
-- 월 예산의 유일 키는 household_id + year + month다.
+- 월 예산의 유일 키는 household_id + year + month다. 배분은 `budget_allocations(budget_id, category_id)`이며 예산·카테고리 삭제 시 CASCADE로 지워져 카테고리 삭제 RPC는 배분을 따로 다루지 않는다. `validate_budget_allocation` 트리거가 같은 가계부의 지출 대분류(미분류 제외)만 허용한다.
+- 예산·배분 직접 쓰기는 막고 `save_monthly_budget`(총예산+배분 원자 교체, 합계 ≤ 총예산)과 `reset_monthly_budget`(행 삭제)만 쓴다. 두 RPC는 가계부 advisory lock 후 `monthly_budgets.revision`(저장마다 새 UUID)을 앱이 불러온 값과 비교해 다르면 `PT409`로 거부하고, 앱은 `BudgetConflictException`으로 다시 불러오기를 안내한다. 시각 대신 UUID를 써서 초기화 후 재생성에서도 오래된 편집을 구분한다.
+- 홈과 예산 페이지는 `homeSummaryProvider`(선택 월 거래+예산)를 공유하고 카테고리 지출은 `transactions.category_id`(항상 대분류)로 합산한다. 예산 저장·초기화·충돌 후와 카테고리 변경 시 다시 조회한다.
 - 금액·월·Household 규칙은 [제품 문서](docs/PRODUCT.md)를 따른다. 접근 제어는 RLS로 보장하며 클라이언트에 service role key를 넣지 않는다.
 - 거래 쓰기 성공 시 `transactionChangesProvider`에 알리고 홈·내역이 각자 갱신한다. 실패 시 성공 알림을 보내지 않는다.
 - 쓰기 중 화면을 떠나도 완료·알림을 처리하고 중복 저장을 막는다. 수정 대상의 조회 실패/없음 상태에서는 쓰기를 막는다.

@@ -11,6 +11,7 @@ import '../../app/theme/naroo_widgets.dart';
 import '../../core/money_format.dart';
 import '../../core/selected_month.dart';
 import '../../core/seoul_date.dart';
+import 'budget_progress.dart';
 import 'budget_sheet.dart';
 import 'day_transactions_sheet.dart';
 import 'home_controller.dart';
@@ -197,48 +198,40 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
     ],
   );
 
-  Widget _budget(HomeSummary data) => Padding(
-    padding: const EdgeInsets.symmetric(vertical: NarooSpacing.space8),
-    child: Row(
-      children: [
-        Expanded(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text('예산', style: NarooText.section),
-              const SizedBox(height: NarooSpacing.space4),
-              if (data.budget == null)
-                Text('아직 예산이 없어요.', style: NarooText.bodySecondary)
-              else ...[
-                Text(
-                  '${MoneyFormat.krw(data.expense)} / ${MoneyFormat.krw(data.budget!)}원',
-                  style: NarooText.money(
-                    NarooText.body,
-                    NarooColors.textPrimary,
-                  ),
-                ),
-                Text(
-                  data.remaining! < 0
-                      ? '${MoneyFormat.krw(data.remaining!)}원 초과'
-                      : '${MoneyFormat.krw(data.remaining!)}원 남음',
-                  style: NarooText.bodySecondary.copyWith(
-                    color: data.remaining! < 0
-                        ? NarooColors.expense
-                        : NarooColors.textSecondary,
-                  ),
-                ),
+  Widget _budget(HomeSummary data) {
+    final budget = data.budget;
+    return InkWell(
+      borderRadius: BorderRadius.circular(NarooRadius.input),
+      onTap: () => budget == null
+          ? showBudgetSheet(context, month: data.month)
+          : context.push(AppRoutes.budget),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(vertical: NarooSpacing.space12),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Row(
+              children: [
+                Expanded(child: Text('예산', style: NarooText.section)),
+                if (budget == null)
+                  Text(
+                    '예산 설정',
+                    style: NarooText.body.copyWith(color: NarooColors.primary),
+                  )
+                else
+                  const Icon(NarooIcons.forward, size: NarooIcons.inline),
               ],
-            ],
-          ),
+            ),
+            const SizedBox(height: NarooSpacing.space8),
+            if (budget == null)
+              Text('아직 예산이 없어요.', style: NarooText.bodySecondary)
+            else
+              BudgetProgress(spent: data.expense, budget: budget.amount),
+          ],
         ),
-        TextButton(
-          onPressed: () =>
-              _showSheet(BudgetSheet(month: data.month, amount: data.budget)),
-          child: Text(data.budget == null ? '예산 설정' : '예산 수정'),
-        ),
-      ],
-    ),
-  );
+      ),
+    );
+  }
 
   String _won(int amount) =>
       '${amount < 0 ? '-' : ''}${MoneyFormat.krw(amount)}원';

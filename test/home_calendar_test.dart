@@ -10,11 +10,11 @@ import 'package:naroo/data/models/category.dart';
 import 'package:naroo/data/models/household_member.dart';
 import 'package:naroo/data/models/profile.dart';
 import 'package:naroo/data/models/transaction.dart';
-import 'package:naroo/data/repositories/monthly_budget_repository.dart';
 import 'package:naroo/data/repository_providers.dart';
 
 import 'fake_category_repository.dart';
 import 'fake_household_member_repository.dart';
+import 'fake_monthly_budget_repository.dart';
 import 'fake_transaction_repository.dart';
 
 const _member = HouseholdMember(
@@ -31,19 +31,6 @@ class _Session extends AppSessionNotifier {
     profile: Profile(id: 'user-1', displayName: '나루'),
     member: _member,
   );
-}
-
-class _Budget extends MonthlyBudgetRepository {
-  _Budget(this.amounts);
-  final Map<DateTime, int> amounts;
-
-  @override
-  Future<int?> find(String householdId, DateTime month) async => amounts[month];
-
-  @override
-  Future<void> save(String householdId, DateTime month, int amount) async {
-    amounts[month] = amount;
-  }
 }
 
 TransactionListItem _item(
@@ -84,7 +71,10 @@ Future<FakeTransactionRepository> _pumpApp(
         appSessionProvider.overrideWith(_Session.new),
         currentMonthProvider.overrideWith((ref) => DateTime(2026, 8)),
         monthlyBudgetRepositoryProvider.overrideWithValue(
-          _Budget(budgets ?? {}),
+          FakeMonthlyBudgetRepository({
+            for (final entry in (budgets ?? <DateTime, int>{}).entries)
+              entry.key: FakeMonthlyBudgetRepository.budget(entry.value),
+          }),
         ),
         categoryRepositoryProvider.overrideWithValue(
           FakeCategoryRepository(const [

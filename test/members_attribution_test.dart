@@ -18,6 +18,7 @@ import 'package:naroo/features/transaction/transaction_editor_controller.dart';
 
 import 'fake_category_repository.dart';
 import 'fake_household_member_repository.dart';
+import 'fake_monthly_budget_repository.dart';
 import 'fake_transaction_repository.dart';
 
 const _me = HouseholdMember(
@@ -61,7 +62,7 @@ void main() {
     ];
     final summary = HomeSummary(
       month: DateTime(2026, 12),
-      budget: 1000,
+      budget: FakeMonthlyBudgetRepository.budget(1000),
       items: items,
     );
     expect(summary.income, 1000);

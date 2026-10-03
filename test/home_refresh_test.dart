@@ -6,6 +6,8 @@ import 'package:naroo/features/home/home_controller.dart';
 import 'package:naroo/features/home/home_screen.dart';
 import 'package:naroo/features/home/home_summary.dart';
 
+import 'fake_monthly_budget_repository.dart';
+
 void main() {
   testWidgets('홈 조회 실패 후 재시도와 앱 복귀로 최신 월 합계를 조회한다', (tester) async {
     var fail = true;
@@ -19,7 +21,7 @@ void main() {
           if (fail) throw StateError('private server error');
           return HomeSummary(
             month: DateTime(2026, 12),
-            budget: budget,
+            budget: FakeMonthlyBudgetRepository.budget(budget),
             items: const [],
           );
         }),

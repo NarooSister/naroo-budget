@@ -1,11 +1,12 @@
 import '../../data/models/category.dart';
+import '../../data/models/monthly_budget.dart';
 import '../../data/models/transaction.dart';
 
 class HomeSummary {
   HomeSummary({required this.month, required this.budget, required this.items});
 
   final DateTime month;
-  final int? budget;
+  final MonthlyBudget? budget;
   final List<TransactionListItem> items;
 
   int get income => _total(CategoryType.income);
@@ -14,7 +15,20 @@ class HomeSummary {
       .where((i) => i.transaction.type == type)
       .fold(0, (total, i) => total + i.transaction.amount);
   int get balance => income - expense;
-  int? get remaining => budget == null ? null : budget! - expense;
+  int? get remaining => budget == null ? null : budget!.amount - expense;
+
+  /// Expenses of a top-level category. `category_id` is always the top-level
+  /// category, so subcategory expenses are included.
+  List<TransactionListItem> expensesIn(String categoryId) => [
+    for (final item in items)
+      if (item.transaction.type == CategoryType.expense &&
+          item.transaction.categoryId == categoryId)
+        item,
+  ];
+
+  int spentIn(String categoryId) =>
+      expensesIn(categoryId)
+          .fold(0, (total, i) => total + i.transaction.amount);
 
   late final Map<DateTime, DayTotal> dailyTotals = () {
     final totals = <DateTime, DayTotal>{};

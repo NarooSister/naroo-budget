@@ -11,7 +11,6 @@ import 'package:naroo/data/models/category.dart';
 import 'package:naroo/data/models/household_member.dart';
 import 'package:naroo/data/models/profile.dart';
 import 'package:naroo/data/models/transaction.dart';
-import 'package:naroo/data/repositories/monthly_budget_repository.dart';
 import 'package:naroo/data/repository_providers.dart';
 import 'package:naroo/features/home/home_controller.dart';
 import 'package:naroo/features/home/home_screen.dart';
@@ -21,6 +20,7 @@ import 'package:naroo/features/transaction/transaction_editor_controller.dart';
 import 'package:naroo/features/transaction/transaction_list_controller.dart';
 
 import 'fake_household_member_repository.dart';
+import 'fake_monthly_budget_repository.dart';
 import 'fake_transaction_repository.dart';
 
 const member = HouseholdMember(
@@ -62,25 +62,9 @@ class GatedTransactions extends FakeTransactionRepository {
   }
 }
 
-class Budget extends MonthlyBudgetRepository {
-  int? amount;
-  int writes = 0;
-  bool fail = false;
-  Completer<void>? pending;
-  @override
-  Future<int?> find(String id, DateTime month) async {
-    expect(id, 'h');
-    return amount;
-  }
-
-  @override
-  Future<void> save(String id, DateTime month, int value) async {
-    expect(id, 'h');
-    writes++;
-    await pending?.future;
-    if (fail) throw StateError('private error');
-    amount = value;
-  }
+class Budget extends FakeMonthlyBudgetRepository {
+  set amount(int value) =>
+      budgets[DateTime(2026, 12)] = FakeMonthlyBudgetRepository.budget(value);
 }
 
 TransactionListItem item(
@@ -334,9 +318,10 @@ void main() {
     expect(empty.remaining, null);
     expect(empty.dailyTotals, isEmpty);
     expect(empty.itemsOn(DateTime(2026, 1, 1)), isEmpty);
+    expect(empty.spentIn('c'), 0);
     final zero = HomeSummary(
       month: DateTime(2026, 1),
-      budget: 0,
+      budget: FakeMonthlyBudgetRepository.budget(0),
       items: [
         for (var i = 0; i < 8; i++)
           item(1, CategoryType.expense, DateTime(2026, 1, 1)),
@@ -351,6 +336,8 @@ void main() {
     expect(zero.dailyTotals[DateTime(2026, 1, 31)]!.expense, 30);
     expect(zero.dailyTotals[DateTime(2026, 1, 2)], isNull);
     expect(zero.itemsOn(DateTime(2026, 1, 1)), hasLength(9));
+    expect(zero.spentIn('c'), 38, reason: '수입은 카테고리 지출에 포함하지 않는다');
+    expect(zero.expensesIn('c'), hasLength(9));
   });
   test('예산 연속 저장 차단 및 실패 후 재시도', () async {
     final budget = Budget()..pending = Completer<void>();
@@ -364,15 +351,33 @@ void main() {
     final sub = container.listen(budgetEditorProvider, (_, _) {});
     addTearDown(sub.close);
     final editor = container.read(budgetEditorProvider.notifier);
-    final first = editor.save(DateTime(2026, 12), 0);
-    expect(await editor.save(DateTime(2026, 12), 100), false);
+    Future<BudgetWriteResult> save(int amount, String? version) => editor.save(
+      DateTime(2026, 12),
+      amount: amount,
+      allocations: const {},
+      expectedVersion: version,
+    );
+    final first = save(0, null);
+    expect(await save(100, null), BudgetWriteResult.failed);
     budget.pending!.complete();
-    expect(await first, true);
+    expect(await first, BudgetWriteResult.done);
     expect(budget.writes, 1);
+    final saved = budget.budgets[DateTime(2026, 12)]!.version;
     budget.fail = true;
-    expect(await editor.save(DateTime(2026, 12), 100), false);
+    expect(await save(100, saved), BudgetWriteResult.failed);
     budget.fail = false;
-    expect(await editor.save(DateTime(2026, 12), 100), true);
+    expect(
+      await save(100, null),
+      BudgetWriteResult.conflict,
+      reason: '빈 달로 알고 저장했지만 이미 저장된 경우',
+    );
+    expect(await save(100, saved), BudgetWriteResult.done);
+    expect(budget.budgets[DateTime(2026, 12)]!.amount, 100);
+    expect(
+      await editor.reset(DateTime(2026, 12), expectedVersion: saved),
+      BudgetWriteResult.conflict,
+    );
+    expect(budget.budgets[DateTime(2026, 12)], isNotNull);
   });
   testWidgets('홈 예산 입력 검증, 저장, 수정과 초과 표시', (tester) async {
     tester.view.physicalSize = const Size(390, 844);
@@ -410,16 +415,6 @@ void main() {
       );
       expect(find.text('0~2,147,483,647 사이의 정수를 입력해 주세요.'), findsOneWidget);
     }
-    await tester.enterText(find.byType(TextField), '0');
-    await tester.tap(find.text('저장'));
-    await tester.pumpAndSettle();
-    expect(find.text('100원 초과'), findsOneWidget);
-    await tester.tap(find.text('예산 수정'));
-    await tester.pumpAndSettle();
-    expect(
-      tester.widget<TextField>(find.byType(TextField)).controller!.text,
-      '0',
-    );
     budget.fail = true;
     await tester.enterText(find.byType(TextField), ' 200 ');
     await tester.tap(find.text('저장'));
@@ -430,9 +425,10 @@ void main() {
     );
     expect(find.text('예산을 저장하지 못했습니다. 다시 시도해 주세요.'), findsOneWidget);
     budget.fail = false;
+    await tester.enterText(find.byType(TextField), '0');
     await tester.tap(find.text('저장'));
     await tester.pumpAndSettle();
-    expect(find.text('100원 남음'), findsOneWidget);
+    expect(find.text('100원 초과'), findsOneWidget);
   });
   testWidgets('거래가 바뀌면 이전 홈 합계를 유지한 채 다시 불러온다', (tester) async {
     final transactions = GatedTransactions([

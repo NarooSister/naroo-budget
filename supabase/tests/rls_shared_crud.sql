@@ -22,7 +22,7 @@ select cat2, h2, 'expense', 'Test 2' from naroo_test_ids;
 do $$
 declare t text;
 begin
-  foreach t in array array['profiles','households','household_members','categories','transactions','monthly_budgets'] loop
+  foreach t in array array['profiles','households','household_members','categories','transactions','monthly_budgets','budget_allocations'] loop
     if not (select relrowsecurity from pg_class where oid = ('public.' || t)::regclass) then
       raise exception 'RLS disabled: %', t;
     end if;

@@ -38,6 +38,7 @@ flutter build web --no-pub --dart-define-from-file=env/supabase.json
 - 카테고리 검증: `supabase/tests/category_management.sql`에서 미분류 보호·삭제 원자성·다른 가계부 차단·예산 권한을 검사하고 rollback합니다. 동시 저장/삭제는 별도 두 세션에서 확인합니다.
 - 소분류 검증: `supabase/tests/subcategories.sql`에서 2단계·부모 일치·미분류 선택 차단·소분류/대분류 삭제 규칙·다른 가계부 차단을 검사하고 rollback합니다. `20261003100000_subcategories.sql`은 거래→카테고리 FK를 2개로 만들어 구버전 앱의 `categories(name)` 조회(홈·내역)를 실패시키고, 미분류 선택도 막습니다. migration과 새 웹 배포를 같은 배포 창에 적용하고 기존 브라우저/PWA를 새로고침합니다.
 - 이름 검증: `supabase/tests/profile_names.sql`에서 이름 제한·확인 상태·구성원 동기화·직접 쓰기 차단을 검사하고 rollback합니다. `20261003110000_profile_names.sql`은 기존 이름을 바꾸지 않으며, 새 앱 배포 후 모든 사용자가 한 번 이름을 확인합니다.
+- 예산 검증: `supabase/tests/budget_allocations.sql`에서 직접 쓰기 차단·배분 대상/합계·revision 충돌·초기화·월 독립·카테고리 삭제 후 미배분·다른 가계부 차단을 검사하고 rollback합니다. `20261003130000_budget_allocations.sql` 이후 구버전 앱은 예산을 저장하지 못하므로(직접 upsert 차단) 새 웹 배포와 함께 적용하고, `category_management.sql`·`rls_shared_crud.sql`도 다시 실행합니다.
 - 결제 수단 검증: `supabase/tests/payment_methods.sql`에서 허용 값·수입 차단·사용자별 기본값을 검사하고 rollback합니다. `20261003120000_payment_methods.sql` 이후 구버전 앱은 결제 수단이 있는 지출을 수입으로 바꿔 저장하지 못하므로 새 웹 배포와 함께 적용합니다.
 - 카테고리 전환: `20261003090000_category_management.sql`은 기존 ID/거래를 보존하고 숨겼던 카테고리를 다시 표시합니다. 수입·지출 미분류를 별도로 만들며 기존 동명 카테고리를 병합하지 않습니다. 기존 거래와 분류의 소속/유형이 불일치하면 migration을 중단하므로 먼저 데이터를 확인합니다.
 - 이번 migration은 카테고리의 is_default/is_hidden을 제거하므로 구버전 앱과 호환되지 않습니다. DB migration과 새 웹 배포를 같은 배포 창에 적용하고 기존 브라우저/PWA를 새로고침합니다. 롤백 시에는 컬럼·앱 호환성을 함께 복구해야 합니다. 운영 DB 적용·RLS 실행 결과는 배포 시 별도로 확인합니다.

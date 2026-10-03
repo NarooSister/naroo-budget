@@ -7,6 +7,7 @@ import '../core/session/app_session.dart';
 import '../features/auth/household_connection_screen.dart';
 import '../features/auth/login_screen.dart';
 import '../features/auth/session_loading_screen.dart';
+import '../features/home/budget_screen.dart';
 import '../features/home/home_screen.dart';
 import '../features/profile/profile_name_screen.dart';
 import '../features/settings/category_management_screen.dart';
@@ -103,6 +104,12 @@ final appRouterProvider = Provider<GoRouter>((ref) {
               GoRoute(
                 path: AppRoutes.home,
                 builder: (context, state) => const HomeScreen(),
+                routes: [
+                  GoRoute(
+                    path: 'budget',
+                    builder: (context, state) => const BudgetScreen(),
+                  ),
+                ],
               ),
             ],
           ),

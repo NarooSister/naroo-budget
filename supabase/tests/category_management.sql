@@ -82,12 +82,13 @@ begin
     raise exception 'Income/shared reassignment failed';
   end if;
 
-  -- Existing monthly budget CRUD and tenant protection remain intact.
-  insert into public.monthly_budgets(household_id,year,month,amount) values(i.h1,2026,1,0);
-  update public.monthly_budgets set amount=2147483647 where household_id=i.h1 and year=2026 and month=1;
-  perform pg_temp.expect_rejected(format('insert into public.monthly_budgets(household_id,year,month,amount) values(%L,2026,1,1)',i.h1),array['23505']);
-  perform pg_temp.expect_rejected(format('insert into public.monthly_budgets(household_id,year,month,amount) values(%L,2026,2,1)',i.h2),array['42501']);
-  perform pg_temp.expect_rejected(format('update public.monthly_budgets set amount=-1 where household_id=%L',i.h1),array['23514']);
+  -- Budgets are written through the save RPC with tenant protection.
+  perform public.save_monthly_budget(i.h1,2026,1,0,'[]'::jsonb,null);
+  perform public.save_monthly_budget(i.h1,2026,1,2147483647,'[]'::jsonb,
+    (select revision from public.monthly_budgets where household_id=i.h1 and year=2026 and month=1));
+  perform pg_temp.expect_rejected(format('select public.save_monthly_budget(%L,2026,1,1,''[]''::jsonb,null)',i.h1),array['PT409']);
+  perform pg_temp.expect_rejected(format('select public.save_monthly_budget(%L,2026,2,1,''[]''::jsonb,null)',i.h2),array['42501']);
+  perform pg_temp.expect_rejected(format('select public.save_monthly_budget(%L,2026,3,-1,''[]''::jsonb,null)',i.h1),array['23514']);
 end;
 $$;
 
@@ -118,10 +119,9 @@ declare i record;
 begin
   select * into i from category_test_ids;
   if exists(select 1 from public.monthly_budgets where household_id=i.h1) then raise exception 'Other budget visible'; end if;
-  update public.monthly_budgets set amount=1 where household_id=i.h1;
-  if found then raise exception 'Other budget writable'; end if;
-  delete from public.monthly_budgets where household_id=i.h1;
-  if found then raise exception 'Other budget deletable'; end if;
+  perform pg_temp.expect_rejected(format('update public.monthly_budgets set amount=1 where household_id=%L',i.h1),array['42501']);
+  perform pg_temp.expect_rejected(format('delete from public.monthly_budgets where household_id=%L',i.h1),array['42501']);
+  perform pg_temp.expect_rejected(format('select public.reset_monthly_budget(%L,2026,1,null)',i.h1),array['42501']);
 end;
 $$;
 reset role;
