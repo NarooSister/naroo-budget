@@ -1,6 +1,7 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../core/session/app_session.dart';
+import '../../core/household_member_changes.dart';
 import '../../core/transaction_changes.dart';
 import '../../data/models/category.dart';
 import '../../data/models/household_member.dart';
@@ -9,6 +10,10 @@ import '../../data/repository_providers.dart';
 
 final transactionMembersProvider =
     FutureProvider.autoDispose<List<HouseholdMember>>((ref) async {
+      ref.listen(
+        householdMemberChangesProvider,
+        (_, _) => ref.invalidateSelf(),
+      );
       final session = await ref.watch(appSessionProvider.future);
       final householdId = session.member?.householdId;
       if (householdId == null) {

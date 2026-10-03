@@ -1,11 +1,14 @@
 import '../../core/amount_rules.dart';
 import 'category.dart';
 
+enum AttributionKind { member, shared }
+
 class Transaction {
   const Transaction({
     required this.id,
     required this.householdId,
     required this.memberId,
+    this.attributionKind = AttributionKind.member,
     required this.type,
     required this.amount,
     required this.categoryId,
@@ -15,7 +18,8 @@ class Transaction {
 
   final String id;
   final String householdId;
-  final String memberId;
+  final String? memberId;
+  final AttributionKind attributionKind;
   final CategoryType type;
   final int amount;
   final String categoryId;
@@ -26,7 +30,10 @@ class Transaction {
     return Transaction(
       id: json['id'] as String,
       householdId: json['household_id'] as String,
-      memberId: json['member_id'] as String,
+      memberId: json['member_id'] as String?,
+      attributionKind: AttributionKind.values.byName(
+        json['attribution_kind'] as String? ?? 'member',
+      ),
       type: CategoryType.fromDb(json['type'] as String),
       amount: json['amount'] as int,
       categoryId: json['category_id'] as String,
@@ -46,6 +53,11 @@ class TransactionListItem {
   final Transaction transaction;
   final String categoryName;
   final String? memberName;
+
+  String get attributionLabel =>
+      transaction.attributionKind == AttributionKind.shared
+      ? '공용'
+      : memberName ?? '구성원';
 
   String get title {
     final memo = transaction.memo?.trim();
@@ -77,6 +89,7 @@ class NewTransaction {
   const NewTransaction({
     required this.householdId,
     required this.memberId,
+    this.attributionKind = AttributionKind.member,
     required this.type,
     required this.amount,
     required this.categoryId,
@@ -85,7 +98,8 @@ class NewTransaction {
   });
 
   final String householdId;
-  final String memberId;
+  final String? memberId;
+  final AttributionKind attributionKind;
   final CategoryType type;
   final int amount;
   final String categoryId;

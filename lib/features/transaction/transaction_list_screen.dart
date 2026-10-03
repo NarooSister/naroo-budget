@@ -130,9 +130,7 @@ class TransactionListScreen extends ConsumerWidget {
                                 name: item.categoryName,
                               ),
                               title: Text(item.title),
-                              subtitle: item.memberName == null
-                                  ? null
-                                  : Text(item.memberName!),
+                              subtitle: Text(item.attributionLabel),
                               trailing: Text(
                                 MoneyFormat.signed(
                                   item.transaction.type,

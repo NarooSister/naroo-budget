@@ -37,6 +37,8 @@ class _TransactionCreateScreenState
   String? _categoryId;
   String? _existingCategoryId;
   String? _memberId;
+  String? _existingMemberId;
+  AttributionKind _attributionKind = AttributionKind.member;
   DateTime _occurredOn = SeoulDate.today();
   String? _errorMessage;
   bool _showOptionalFields = false;
@@ -76,6 +78,8 @@ class _TransactionCreateScreenState
       _categoryId = existing.categoryId;
       _existingCategoryId = existing.categoryId;
       _memberId = existing.memberId;
+      _existingMemberId = existing.memberId;
+      _attributionKind = existing.attributionKind;
       _occurredOn = existing.occurredOn;
       _amountController.text = existing.amount.toString();
       _memoController.text = existing.memo ?? '';
@@ -201,7 +205,10 @@ class _TransactionCreateScreenState
 
     final input = NewTransaction(
       householdId: member.householdId,
-      memberId: _memberId ?? member.id,
+      memberId: _attributionKind == AttributionKind.shared
+          ? null
+          : _memberId ?? member.id,
+      attributionKind: _attributionKind,
       type: _type,
       amount: amount,
       categoryId: categoryId,
@@ -226,7 +233,9 @@ class _TransactionCreateScreenState
     final errorMessage = _errorMessage ?? editor.errorMessage;
     final session = ref.watch(appSessionProvider).value;
     final currentMemberId = session?.member?.id;
-    final selectedMemberId = _memberId ?? currentMemberId;
+    final selectedMemberId = _attributionKind == AttributionKind.shared
+        ? 'shared'
+        : _memberId ?? currentMemberId;
     final membersAsync = ref.watch(transactionMembersProvider);
     final categoriesAsync = ref.watch(
       transactionCategoriesProvider((
@@ -370,24 +379,37 @@ class _TransactionCreateScreenState
                             loading: () => const SizedBox.shrink(),
                             error: (_, _) => const Text('구성원을 불러오지 못했습니다.'),
                             data: (members) {
-                              if (members.isEmpty) {
-                                return const SizedBox.shrink();
-                              }
                               return DropdownMenu<String>(
+                                expandedInsets: EdgeInsets.zero,
                                 key: ValueKey(selectedMemberId),
                                 initialSelection: selectedMemberId,
                                 label: const Text('구성원'),
                                 dropdownMenuEntries: [
-                                  for (final member in members)
+                                  const DropdownMenuEntry(
+                                    value: 'shared',
+                                    label: '공용',
+                                  ),
+                                  for (final member in members.where(
+                                    (member) =>
+                                        !member.isHidden ||
+                                        member.id == _existingMemberId,
+                                  ))
                                     DropdownMenuEntry(
                                       value: member.id,
-                                      label: member.displayName,
+                                      label:
+                                          '${member.displayName}${member.isHidden ? ' (숨김)' : ''}',
                                     ),
                                 ],
                                 enabled: !_isBusy,
                                 onSelected: (value) {
+                                  if (value == null) return;
                                   setState(() {
-                                    _memberId = value;
+                                    _attributionKind = value == 'shared'
+                                        ? AttributionKind.shared
+                                        : AttributionKind.member;
+                                    _memberId = value == 'shared'
+                                        ? null
+                                        : value;
                                   });
                                 },
                               );

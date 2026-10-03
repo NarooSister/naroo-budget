@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../core/seoul_date.dart';
+import '../../core/household_member_changes.dart';
 import '../../core/session/app_session.dart';
 import '../../core/transaction_changes.dart';
 import '../../data/repository_providers.dart';
@@ -45,6 +46,7 @@ final homeSummaryProvider = FutureProvider.autoDispose<HomeSummary>((
 ) async {
   final month = ref.watch(homeMonthProvider);
   ref.watch(transactionChangesProvider);
+  ref.listen(householdMemberChangesProvider, (_, _) => ref.invalidateSelf());
   final session = await ref.watch(appSessionProvider.future);
   final householdId = session.member?.householdId;
   if (householdId == null) throw StateError('Household 연결이 필요합니다.');

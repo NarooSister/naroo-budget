@@ -1,4 +1,4 @@
--- Run as postgres in SQL Editor after both migrations.
+-- Run as postgres in SQL Editor after all migrations.
 -- Fixtures are isolated and rolled back; no real user IDs are required.
 begin;
 create temporary table naroo_test_ids as
@@ -77,7 +77,7 @@ begin
     insert into public.transactions (household_id, member_id, type, amount, category_id)
     values (i.h1, i.m3, 'expense', 1, i.cat2);
     raise exception using errcode = 'XX000', message = 'Cross-household insert allowed';
-  exception when insufficient_privilege or raise_exception then null;
+  exception when insufficient_privilege or raise_exception or check_violation then null;
   end;
 end $$;
 
@@ -96,6 +96,129 @@ begin
   if not found then raise exception 'Shared delete failed'; end if;
 end $$;
 
+-- Custom members are editable within the household but cannot grant access.
+select set_config('request.jwt.claim.sub', a::text, true) from naroo_test_ids;
+do $$
+declare
+  i record;
+  custom public.household_members;
+  tx uuid;
+  income_category uuid;
+  command text;
+begin
+  select * into i from naroo_test_ids;
+  custom := public.create_custom_member(i.h1, '  나루  ');
+  if custom.user_id is not null or custom.display_name <> '나루' or custom.is_hidden then
+    raise exception 'Invalid custom member';
+  end if;
+  custom := public.rename_custom_member(custom.id, '나루 변경');
+  if custom.display_name <> '나루 변경' then raise exception 'Rename failed'; end if;
+
+  foreach command in array array[
+    format('select public.create_custom_member(%L, %L)', i.h2, 'Denied'),
+    format('select public.rename_custom_member(%L, %L)', i.m3, 'Denied'),
+    format('select public.set_custom_member_hidden(%L, true)', i.m3),
+    format('select public.rename_custom_member(%L, %L)', i.m1, 'Denied'),
+    format('select public.set_custom_member_hidden(%L, true)', i.m2),
+    format('insert into public.household_members (household_id,user_id,display_name) values (%L,%L,%L)', i.h1,i.c,'Denied'),
+    format('update public.household_members set user_id = %L where id = %L', i.c, custom.id),
+    format('update public.household_members set user_id = %L where id = %L', i.a, custom.id),
+    format('update public.household_members set user_id = null where id = %L', i.m1),
+    format('update public.household_members set user_id = %L where id = %L', i.c, i.m1),
+    format('update public.household_members set household_id = %L where id = %L', i.h2, custom.id),
+    format('delete from public.household_members where id = %L', custom.id)
+  ] loop
+    begin
+      execute command;
+      raise exception using errcode = 'XX000', message = 'Unauthorized member write accepted: ' || command;
+    exception when insufficient_privilege then null;
+    end;
+  end loop;
+
+  begin
+    perform public.create_custom_member(i.h1, E' \t\n');
+    raise exception using errcode = 'XX000', message = 'Blank name accepted';
+  exception when check_violation then null;
+  end;
+
+  insert into public.transactions (household_id, member_id, type, amount, category_id)
+  values (i.h1, custom.id, 'expense', 100, i.cat1) returning id into tx;
+  perform public.set_custom_member_hidden(custom.id, true);
+  update public.transactions set amount = 200 where id = tx;
+  if (select member_id from public.transactions where id = tx) <> custom.id then
+    raise exception 'Hidden attribution lost';
+  end if;
+
+  foreach command in array array[
+    format('insert into public.transactions (household_id,member_id,type,amount,category_id) values (%L,%L,%L,1,%L)', i.h1,custom.id,'expense',i.cat1),
+    format('insert into public.transactions (household_id,member_id,type,amount,category_id) values (%L,%L,%L,1,%L)', i.h1,i.m3,'expense',i.cat1),
+    format('update public.transactions set member_id = null where id = %L', tx),
+    format('update public.transactions set attribution_kind = %L where id = %L', 'shared', tx),
+    format('update public.transactions set attribution_kind = %L where id = %L', 'unknown', tx)
+  ] loop
+    begin
+      execute command;
+      raise exception using errcode = 'XX000', message = 'Invalid attribution accepted: ' || command;
+    exception when check_violation then null;
+    end;
+  end loop;
+
+  update public.transactions set attribution_kind = 'shared', member_id = null where id = tx;
+  begin
+    update public.transactions set attribution_kind = 'member', member_id = custom.id where id = tx;
+    raise exception using errcode = 'XX000', message = 'Switch to hidden member accepted';
+  exception when check_violation then null;
+  end;
+  perform public.set_custom_member_hidden(custom.id, false);
+  update public.transactions set attribution_kind = 'member', member_id = custom.id where id = tx;
+  insert into public.categories (household_id, type, name)
+  values (i.h1, 'income', 'Test income') returning id into income_category;
+  insert into public.transactions (household_id, member_id, attribution_kind, type, amount, category_id)
+  values (i.h1, null, 'shared', 'income', 500, income_category),
+         (i.h1, custom.id, 'member', 'income', 600, income_category);
+  if (select sum(amount) from public.transactions where household_id = i.h1) <> 1300 then
+    raise exception 'Attribution changed totals';
+  end if;
+  -- A different login still has no access after the rejected linkage writes.
+  perform set_config('request.jwt.claim.sub', i.c::text, true);
+  if public.is_household_member(i.h1) or exists(select 1 from public.transactions where household_id = i.h1) then
+    raise exception 'Custom member granted household access';
+  end if;
+  begin
+    perform public.rename_custom_member(custom.id, 'Denied');
+    raise exception using errcode = 'XX000', message = 'Cross-household custom rename accepted';
+  exception when insufficient_privilege then null;
+  end;
+  begin
+    perform public.set_custom_member_hidden(custom.id, true);
+    raise exception using errcode = 'XX000', message = 'Cross-household custom hide accepted';
+  exception when insufficient_privilege then null;
+  end;
+  perform set_config('request.jwt.claim.sub', '', true);
+  begin
+    perform public.create_custom_member(i.h1, 'Denied');
+    raise exception using errcode = 'XX000', message = 'Missing login accepted';
+  exception when insufficient_privilege then null;
+  end;
+end $$;
+
+reset role;
+set local role anon;
+do $$
+declare command text;
+begin
+  foreach command in array array[
+    'select public.create_custom_member(null, ''Denied'')',
+    'select public.rename_custom_member(null, ''Denied'')',
+    'select public.set_custom_member_hidden(null, true)'
+  ] loop
+    begin
+      execute command;
+      raise exception using errcode = 'XX000', message = 'Anonymous RPC accepted';
+    exception when insufficient_privilege then null;
+    end;
+  end loop;
+end $$;
 reset role;
 rollback;
-select 'PASS: RLS, grants, shared CRUD, categories, amount and month query. Test fixtures rolled back.' as result;
+select 'PASS: RLS, grants, shared CRUD, categories, amount, month, custom members and attribution. Test fixtures rolled back.' as result;

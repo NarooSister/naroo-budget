@@ -1,6 +1,7 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../core/seoul_date.dart';
+import '../../core/household_member_changes.dart';
 import '../../core/session/app_session.dart';
 import '../../core/transaction_changes.dart';
 import '../../data/models/category.dart';
@@ -60,6 +61,10 @@ final monthlyTransactionsProvider =
       // A successful write refreshes this query without discarding the previous
       // list or changing the independently selected month and filter.
       ref.listen(transactionChangesProvider, (_, _) => ref.invalidateSelf());
+      ref.listen(
+        householdMemberChangesProvider,
+        (_, _) => ref.invalidateSelf(),
+      );
       final session = await ref.watch(appSessionProvider.future);
       final householdId = session.member?.householdId;
       if (householdId == null) {

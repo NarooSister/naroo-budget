@@ -118,6 +118,7 @@ class SupabaseTransactionRepository implements TransactionRepository {
     return {
       'household_id': input.householdId,
       'member_id': input.memberId,
+      'attribution_kind': input.attributionKind.name,
       'type': input.type.dbValue,
       'amount': input.amount,
       'category_id': input.categoryId,
@@ -136,8 +137,13 @@ class SupabaseTransactionRepository implements TransactionRepository {
     if (input.categoryId.trim().isEmpty) {
       throw ArgumentError('카테고리를 선택해 주세요.');
     }
-    if (input.memberId.trim().isEmpty) {
+    if (input.attributionKind == AttributionKind.member &&
+        (input.memberId == null || input.memberId!.trim().isEmpty)) {
       throw ArgumentError('구성원을 선택해 주세요.');
+    }
+    if (input.attributionKind == AttributionKind.shared &&
+        input.memberId != null) {
+      throw ArgumentError('공용 기록에는 구성원을 지정할 수 없습니다.');
     }
   }
 

@@ -159,6 +159,7 @@ void main() {
           final expected = {
             'household_id': 'household-1',
             'member_id': 'member-1',
+            'attribution_kind': 'member',
             'type': 'income',
             'amount': NewTransaction.maxAmount,
             'category_id': 'salary',

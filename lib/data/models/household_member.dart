@@ -4,19 +4,24 @@ class HouseholdMember {
     required this.householdId,
     required this.userId,
     required this.displayName,
+    this.isHidden = false,
   });
 
   final String id;
   final String householdId;
-  final String userId;
+  final String? userId;
   final String displayName;
+  final bool isHidden;
+
+  bool get isCustom => userId == null;
 
   factory HouseholdMember.fromJson(Map<String, dynamic> json) {
     return HouseholdMember(
       id: json['id'] as String,
       householdId: json['household_id'] as String,
-      userId: json['user_id'] as String,
+      userId: json['user_id'] as String?,
       displayName: json['display_name'] as String,
+      isHidden: json['is_hidden'] as bool? ?? false,
     );
   }
 }

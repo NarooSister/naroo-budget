@@ -33,6 +33,6 @@ flutter build web --no-pub --dart-define-from-file=env/supabase.json
 ## DB와 운영
 
 - 스키마: `supabase/migrations/`
-- 새 환경의 초기 Household 연결: `supabase/bootstrap/` SQL 템플릿을 관리자 역할로 한 번 실행합니다. 기존 연결에 재실행하지 않습니다.
-- RLS 검증: `supabase/tests/rls_shared_crud.sql`은 임시 데이터로 검사하고 rollback합니다.
+- Supabase GitHub 연동으로 main 브랜치에 반영된 새 migration은 DB에 자동 적용됩니다. 스키마 변경은 새 migration 파일로 추가하고, 이미 적용된 파일은 수정하지 않습니다. 적용 결과는 Supabase 대시보드에서 확인합니다.
+- RLS 검증: `supabase/tests/rls_shared_crud.sql`은 임시 데이터로 검사하고 rollback합니다. 자동 실행되지 않으므로 권한 관련 migration이 반영된 뒤 SQL Editor에서 실행합니다.
 - 웹 배포: Cloudflare Pages. 배포 상태는 CI와 별도로 확인합니다.

@@ -31,6 +31,10 @@ UI는 Supabase 쿼리와 주요 업무 계산을 하지 않는다. Repository �
 ## 데이터와 갱신
 
 - 테이블: profiles, households, household_members, categories, transactions, monthly_budgets.
+- 계정 없는 구성원은 `household_members.user_id IS NULL`이며 가입 판정은 로그인 사용자 ID로만 한다. 구성원 직접 쓰기는 차단하고 임의 구성원 전용 RPC로 이름·숨김만 관리한다. `transactions.attribution_kind`는 member/shared이며 member_id와 CHECK로 일관성을 유지한다.
+- 구성원 RPC는 `SECURITY DEFINER`·`search_path = ''`로 만들고 `auth.uid()`와 가계부 가입을 검사한다. 대상은 `user_id IS NULL`인 구성원뿐이며 user_id·household_id는 바꾸지 않는다. EXECUTE는 authenticated에만 허용한다. 구성원은 삭제하지 않고 숨긴다. 로그인 구성원은 숨길 수 없다.
+- `validate_transaction_refs` 트리거가 거래의 구성원·카테고리가 같은 가계부인지 검사하고, 숨긴 구성원을 새로 지정하는 것을 막는다.
+- 구성원 쓰기 성공 시 `householdMemberChangesProvider`로 설정·입력 선택지·홈·내역을 갱신한다. 숨김은 기존 거래와 합계에 영향을 주지 않는다.
 - 거래 날짜는 PostgreSQL DATE, 서울 기준이다. created_at/updated_at은 거래 날짜 계산에 사용하지 않는다.
 - 월 예산의 유일 키는 household_id + year + month다.
 - 금액·월·Household 규칙은 [제품 문서](docs/PRODUCT.md)를 따른다. 접근 제어는 RLS로 보장하며 클라이언트에 service role key를 넣지 않는다.

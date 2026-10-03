@@ -171,7 +171,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
                       overflow: TextOverflow.ellipsis,
                     ),
                     subtitle: Text(
-                      '${SeoulDate.daySectionLabel(item.transaction.occurredOn)} · ${item.memberName ?? '구성원'}',
+                      '${SeoulDate.daySectionLabel(item.transaction.occurredOn)} · ${item.attributionLabel}',
                     ),
                     trailing: Text(
                       '${MoneyFormat.signed(item.transaction.type, item.transaction.amount)}원',
