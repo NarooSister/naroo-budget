@@ -1,86 +1,64 @@
 import 'package:flutter_test/flutter_test.dart';
-
 import 'package:naroo/data/models/category.dart';
 
 import 'fake_category_repository.dart';
 
 void main() {
-  test('타입별 조회와 숨김 제외 필터가 동작한다', () async {
+  test('가계부/유형별 목록과 일반 분류 수정·삭제', () async {
     final repository = FakeCategoryRepository([
       const Category(
-        id: '1',
+        id: 'food',
         householdId: 'h1',
         type: CategoryType.expense,
         name: '식비',
-        isDefault: true,
-        isHidden: false,
       ),
       const Category(
-        id: '2',
-        householdId: 'h1',
-        type: CategoryType.expense,
-        name: '숨긴 식비',
-        isDefault: false,
-        isHidden: true,
-      ),
-      const Category(
-        id: '3',
+        id: 'salary',
         householdId: 'h1',
         type: CategoryType.income,
         name: '월급',
-        isDefault: true,
-        isHidden: false,
+      ),
+      const Category(
+        id: 'other',
+        householdId: 'h2',
+        type: CategoryType.expense,
+        name: '다른 집',
       ),
     ]);
-
-    final expenses = await repository.listByHousehold(
-      'h1',
-      type: CategoryType.expense,
-      includeHidden: false,
+    expect(
+      (await repository.listByHousehold(
+        'h1',
+        type: CategoryType.expense,
+      )).single.id,
+      'food',
     );
-
-    expect(expenses.map((item) => item.name), ['식비']);
+    expect(
+      (await repository.rename(categoryId: 'food', name: ' 먹거리 ')).name,
+      '먹거리',
+    );
+    await repository.delete('food');
+    expect(
+      await repository.listByHousehold('h1', type: CategoryType.expense),
+      isEmpty,
+    );
+    expect(await repository.listByHousehold('h2'), hasLength(1));
   });
 
-  test('기본 카테고리 이름 수정은 거부한다', () async {
-    final repository = FakeCategoryRepository([
-      const Category(
-        id: '1',
-        householdId: 'h1',
-        type: CategoryType.expense,
-        name: '식비',
-        isDefault: true,
-        isHidden: false,
-      ),
-    ]);
-
-    expect(
-      () => repository.rename(categoryId: '1', name: '식비2'),
+  test('미분류 식별값 변환과 수정·삭제 보호', () async {
+    final category = Category.fromJson({
+      'id': 'u',
+      'household_id': 'h1',
+      'type': 'expense',
+      'name': '미분류',
+      'is_uncategorized': true,
+    });
+    expect(category.isUncategorized, true);
+    final repository = FakeCategoryRepository([category]);
+    await expectLater(
+      repository.rename(categoryId: 'u', name: '변경'),
       throwsStateError,
     );
-  });
-
-  test('사용자 카테고리 생성/수정/숨김이 동작한다', () async {
-    final repository = FakeCategoryRepository();
-
-    final created = await repository.create(
-      householdId: 'h1',
-      type: CategoryType.expense,
-      name: ' 구독 ',
-    );
-    expect(created.name, '구독');
-    expect(created.isDefault, isFalse);
-
-    final renamed = await repository.rename(
-      categoryId: created.id,
-      name: '멤버십',
-    );
-    expect(renamed.name, '멤버십');
-
-    final hidden = await repository.setHidden(
-      categoryId: created.id,
-      isHidden: true,
-    );
-    expect(hidden.isHidden, isTrue);
+    await expectLater(repository.delete('u'), throwsStateError);
+    expect((await repository.listByHousehold('h1')).single.id, 'u');
   });
 }

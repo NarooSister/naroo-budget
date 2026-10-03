@@ -23,16 +23,14 @@ class Category {
     required this.householdId,
     required this.type,
     required this.name,
-    required this.isDefault,
-    required this.isHidden,
+    this.isUncategorized = false,
   });
 
   final String id;
   final String householdId;
   final CategoryType type;
   final String name;
-  final bool isDefault;
-  final bool isHidden;
+  final bool isUncategorized;
 
   factory Category.fromJson(Map<String, dynamic> json) {
     return Category(
@@ -40,19 +38,17 @@ class Category {
       householdId: json['household_id'] as String,
       type: CategoryType.fromDb(json['type'] as String),
       name: json['name'] as String,
-      isDefault: json['is_default'] as bool,
-      isHidden: json['is_hidden'] as bool,
+      isUncategorized: json['is_uncategorized'] as bool,
     );
   }
 
-  Category copyWith({String? name, bool? isHidden}) {
+  Category copyWith({String? name}) {
     return Category(
       id: id,
       householdId: householdId,
       type: type,
       name: name ?? this.name,
-      isDefault: isDefault,
-      isHidden: isHidden ?? this.isHidden,
+      isUncategorized: isUncategorized,
     );
   }
 }

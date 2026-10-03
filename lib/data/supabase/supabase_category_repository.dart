@@ -12,7 +12,6 @@ class SupabaseCategoryRepository implements CategoryRepository {
   Future<List<Category>> listByHousehold(
     String householdId, {
     CategoryType? type,
-    bool includeHidden = true,
   }) async {
     final client = _requireClient();
 
@@ -25,11 +24,10 @@ class SupabaseCategoryRepository implements CategoryRepository {
       query = query.eq('type', type.dbValue);
     }
 
-    if (!includeHidden) {
-      query = query.eq('is_hidden', false);
-    }
-
-    final rows = await query.order('created_at');
+    final rows = await query
+        .order('is_uncategorized', ascending: true)
+        .order('created_at', ascending: true)
+        .order('id', ascending: true);
     return rows.map(Category.fromJson).toList(growable: false);
   }
 
@@ -48,8 +46,6 @@ class SupabaseCategoryRepository implements CategoryRepository {
           'household_id': householdId,
           'type': type.dbValue,
           'name': trimmed,
-          'is_default': false,
-          'is_hidden': false,
         })
         .select()
         .single();
@@ -72,8 +68,8 @@ class SupabaseCategoryRepository implements CategoryRepository {
         .single();
     final category = Category.fromJson(existing);
 
-    if (category.isDefault) {
-      throw StateError('기본 카테고리 이름은 수정할 수 없습니다.');
+    if (category.isUncategorized) {
+      throw StateError('미분류 이름은 수정할 수 없습니다.');
     }
 
     final row = await client
@@ -87,20 +83,11 @@ class SupabaseCategoryRepository implements CategoryRepository {
   }
 
   @override
-  Future<Category> setHidden({
-    required String categoryId,
-    required bool isHidden,
-  }) async {
-    final client = _requireClient();
-
-    final row = await client
-        .from('categories')
-        .update({'is_hidden': isHidden})
-        .eq('id', categoryId)
-        .select()
-        .single();
-
-    return Category.fromJson(row);
+  Future<void> delete(String categoryId) async {
+    await _requireClient().rpc<void>(
+      'delete_category',
+      params: {'target_category_id': categoryId},
+    );
   }
 
   String _validateName(String name) {

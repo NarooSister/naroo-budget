@@ -31,6 +31,11 @@ UI는 Supabase 쿼리와 주요 업무 계산을 하지 않는다. Repository �
 ## 데이터와 갱신
 
 - 테이블: profiles, households, household_members, categories, transactions, monthly_budgets.
+- 카테고리는 가계부별 독립 데이터이며 초기 추천값을 복사한다. 공통 분류 정의/사용 설정 테이블은 두지 않는다. 거래의 가계부·유형 중복은 접근 제어와 조회를 위한 의도적 중복이며 참조 트리거와 카테고리 식별자 불변 규칙으로 보호한다.
+- `categories.is_uncategorized`와 가계부·유형별 부분 UNIQUE 인덱스로 미분류를 식별한다. 기존 가계부는 migration, 새 가계부는 생성 트리거로 수입·지출 미분류를 만든다. 미분류의 이름·식별자는 보호하고 카테고리 직접 DELETE는 허용하지 않는다.
+- `delete_category` RPC는 로그인·가계부 가입을 검사하고 대상 행을 잠근 뒤 거래 재분류와 삭제를 원자적으로 처리한다. SECURITY DEFINER·빈 search_path·authenticated 전용 EXECUTE를 사용한다. 거래 ID·금액·날짜·메모·귀속은 유지한다. FK가 삭제 중 신규 참조의 고아화를 막으며 충돌한 저장은 실패 후 재조회한다.
+- 카테고리는 생성 시 가계부·유형·이름만, 수정 시 이름만 직접 쓸 수 있다. ID·소속·유형·미분류 여부는 변경 불가하다. 기본/숨김 플래그는 제거했다. 조회는 미분류를 마지막에 두고 created_at·id로 동률을 해소한다. 사용자 정렬 순서는 별도 기능이다.
+- 카테고리 변경 시 `categoryChangesProvider`로 입력 선택지를 갱신한다. 이름 변경·삭제는 `transactionChangesProvider`에도 알려 홈·내역을 다시 조회한다. 이름은 현재 카테고리/구성원에서 읽으며 과거 이름 스냅샷을 저장하지 않는다.
 - 계정 없는 구성원은 `household_members.user_id IS NULL`이며 가입 판정은 로그인 사용자 ID로만 한다. 구성원 직접 쓰기는 차단하고 임의 구성원 전용 RPC로 이름·숨김만 관리한다. `transactions.attribution_kind`는 member/shared이며 member_id와 CHECK로 일관성을 유지한다.
 - 구성원 RPC는 `SECURITY DEFINER`·`search_path = ''`로 만들고 `auth.uid()`와 가계부 가입을 검사한다. 대상은 `user_id IS NULL`인 구성원뿐이며 user_id·household_id는 바꾸지 않는다. EXECUTE는 authenticated에만 허용한다. 구성원은 삭제하지 않고 숨긴다. 로그인 구성원은 숨길 수 없다.
 - `validate_transaction_refs` 트리거가 거래의 구성원·카테고리가 같은 가계부인지 검사하고, 숨긴 구성원을 새로 지정하는 것을 막는다.

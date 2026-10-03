@@ -4,7 +4,6 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../app/theme/naroo_colors.dart';
 import '../../app/theme/naroo_icons.dart';
 import '../../app/theme/naroo_spacing.dart';
-import '../../app/theme/naroo_text.dart';
 import '../../app/theme/naroo_widgets.dart';
 import '../../data/models/category.dart';
 import 'category_controller.dart';
@@ -21,6 +20,7 @@ class _CategoryManagementScreenState
     extends ConsumerState<CategoryManagementScreen>
     with SingleTickerProviderStateMixin {
   late final TabController _tabController;
+  bool _busy = false;
 
   @override
   void initState() {
@@ -39,7 +39,7 @@ class _CategoryManagementScreenState
     Category? category,
   }) async {
     final isEditing = category != null;
-    if (isEditing && category.isDefault) {
+    if (_busy || (isEditing && category.isUncategorized)) {
       return;
     }
 
@@ -62,6 +62,7 @@ class _CategoryManagementScreenState
       return;
     }
 
+    setState(() => _busy = true);
     try {
       if (isEditing) {
         await ref
@@ -78,21 +79,44 @@ class _CategoryManagementScreenState
       }
       ScaffoldMessenger.of(context)
           .showSnackBar(const SnackBar(content: Text('카테고리를 저장하지 못했습니다.')));
+    } finally {
+      if (mounted) setState(() => _busy = false);
     }
   }
 
-  Future<void> _toggleHidden(Category category) async {
+  Future<void> _delete(Category category) async {
+    if (_busy || category.isUncategorized) return;
+    setState(() => _busy = true);
     try {
-      await ref
-          .read(categoriesProvider.notifier)
-          .setHidden(categoryId: category.id, isHidden: !category.isHidden);
+      final confirmed = await showDialog<bool>(
+        context: context,
+        builder: (context) => AlertDialog(
+          title: Text('‘${category.name}’을 삭제할까요?'),
+          content: const Text('카테고리에 포함된 내용은 모두 미분류로 변경됩니다.'),
+          actionsAlignment: MainAxisAlignment.spaceBetween,
+          actions: [
+            FilledButton(
+              onPressed: () => Navigator.of(context).pop(false),
+              child: const Text('취소'),
+            ),
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(true),
+              style: TextButton.styleFrom(foregroundColor: NarooColors.error),
+              child: const Text('삭제'),
+            ),
+          ],
+        ),
+      );
+      if (confirmed != true || !mounted) return;
+      await ref.read(categoriesProvider.notifier).delete(category.id);
     } catch (_) {
       if (!mounted) {
         return;
       }
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(const SnackBar(content: Text('카테고리 숨김 상태를 바꾸지 못했습니다.')));
+      ScaffoldMessenger.of(context)
+          .showSnackBar(const SnackBar(content: Text('카테고리를 삭제하지 못했습니다.')));
+    } finally {
+      if (mounted) setState(() => _busy = false);
     }
   }
 
@@ -112,12 +136,14 @@ class _CategoryManagementScreenState
         ),
       ),
       floatingActionButton: FloatingActionButton(
-        onPressed: () {
-          final type = _tabController.index == 0
-              ? CategoryType.expense
-              : CategoryType.income;
-          _showEditor(type: type);
-        },
+        onPressed: _busy
+            ? null
+            : () {
+                final type = _tabController.index == 0
+                    ? CategoryType.expense
+                    : CategoryType.income;
+                _showEditor(type: type);
+              },
         child: const Icon(NarooIcons.add, size: NarooIcons.action),
       ),
       body: categoriesAsync.when(
@@ -133,7 +159,8 @@ class _CategoryManagementScreenState
                     .toList(growable: false),
                 onEdit: (category) =>
                     _showEditor(type: category.type, category: category),
-                onToggleHidden: _toggleHidden,
+                onDelete: _delete,
+                busy: _busy,
               ),
               _CategoryList(
                 categories: categories
@@ -141,7 +168,8 @@ class _CategoryManagementScreenState
                     .toList(growable: false),
                 onEdit: (category) =>
                     _showEditor(type: category.type, category: category),
-                onToggleHidden: _toggleHidden,
+                onDelete: _delete,
+                busy: _busy,
               ),
             ],
           );
@@ -211,12 +239,14 @@ class _CategoryList extends StatelessWidget {
   const _CategoryList({
     required this.categories,
     required this.onEdit,
-    required this.onToggleHidden,
+    required this.onDelete,
+    required this.busy,
   });
 
   final List<Category> categories;
   final ValueChanged<Category> onEdit;
-  final ValueChanged<Category> onToggleHidden;
+  final ValueChanged<Category> onDelete;
+  final bool busy;
 
   @override
   Widget build(BuildContext context) {
@@ -235,39 +265,32 @@ class _CategoryList extends StatelessWidget {
       separatorBuilder: (_, _) => const Divider(height: 1),
       itemBuilder: (context, index) {
         final category = categories[index];
-        final subtitle = [
-          if (category.isDefault) '기본',
-          if (category.isHidden) '숨김',
-        ].join(' · ');
-
         return ListTile(
           contentPadding: EdgeInsets.zero,
-          title: Text(
-            category.name,
-            style: category.isHidden
-                ? NarooText.body.copyWith(color: NarooColors.textTertiary)
-                : null,
-          ),
-          subtitle: subtitle.isEmpty ? null : Text(subtitle),
-          trailing: Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              if (!category.isDefault)
-                IconButton(
-                  tooltip: '수정',
-                  onPressed: () => onEdit(category),
-                  icon: const Icon(NarooIcons.edit, size: NarooIcons.action),
+          title: Text(category.name),
+          trailing: category.isUncategorized
+              ? null
+              : Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    IconButton(
+                      tooltip: '수정',
+                      onPressed: busy ? null : () => onEdit(category),
+                      icon: const Icon(
+                        NarooIcons.edit,
+                        size: NarooIcons.action,
+                      ),
+                    ),
+                    IconButton(
+                      tooltip: '삭제',
+                      onPressed: busy ? null : () => onDelete(category),
+                      icon: const Icon(
+                        NarooIcons.delete,
+                        size: NarooIcons.action,
+                      ),
+                    ),
+                  ],
                 ),
-              IconButton(
-                tooltip: category.isHidden ? '숨김 해제' : '숨기기',
-                onPressed: () => onToggleHidden(category),
-                icon: Icon(
-                  category.isHidden ? NarooIcons.show : NarooIcons.hide,
-                  size: NarooIcons.action,
-                ),
-              ),
-            ],
-          ),
         );
       },
     );

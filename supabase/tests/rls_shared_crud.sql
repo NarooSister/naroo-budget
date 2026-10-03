@@ -40,13 +40,13 @@ begin
   select * into i from naroo_test_ids;
   insert into public.profiles (id, display_name) values (i.a, 'A');
   if (select count(*) from public.household_members) <> 2
-     or (select count(*) from public.categories) <> 1
+     or (select count(*) from public.categories) <> 3
      or (select count(*) from public.households) <> 1 then
     raise exception 'Household read isolation failed';
   end if;
   insert into public.transactions (household_id, member_id, type, amount, category_id, occurred_on)
   values (i.h1, i.m2, 'expense', 12000, i.cat1, date '2026-12-31');
-  update public.categories set name = 'Renamed', is_hidden = true where id = i.cat1;
+  update public.categories set name = 'Renamed' where id = i.cat1;
   if not found then raise exception 'Category update failed'; end if;
   begin
     insert into public.transactions (household_id, member_id, type, amount, category_id)

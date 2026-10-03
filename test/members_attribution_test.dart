@@ -271,8 +271,6 @@ Future<ProviderContainer> _pump(
               householdId: 'h',
               type: type,
               name: type == CategoryType.income ? '급여' : '식비',
-              isDefault: true,
-              isHidden: false,
             ),
         ]),
       ),

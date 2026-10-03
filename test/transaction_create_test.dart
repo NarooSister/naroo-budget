@@ -48,24 +48,18 @@ void main() {
         householdId: 'household-1',
         type: CategoryType.expense,
         name: '식비',
-        isDefault: true,
-        isHidden: false,
       ),
       const Category(
         id: 'hidden',
         householdId: 'household-1',
         type: CategoryType.expense,
         name: '숨김',
-        isDefault: false,
-        isHidden: true,
       ),
       const Category(
         id: 'salary',
         householdId: 'household-1',
         type: CategoryType.income,
         name: '월급',
-        isDefault: true,
-        isHidden: false,
       ),
     ]);
     final members = FakeHouseholdMemberRepository([_member, _partner]);
@@ -97,7 +91,7 @@ void main() {
 
     expect(find.widgetWithText(AppBar, '기록 추가'), findsOneWidget);
     expect(find.text('식비'), findsOneWidget);
-    expect(find.text('숨김'), findsNothing);
+    expect(find.text('숨김'), findsOneWidget);
     expect(find.text('월급'), findsNothing);
 
     await tester.enterText(find.byType(TextField).first, '12000');
@@ -124,8 +118,6 @@ void main() {
         householdId: 'household-1',
         type: CategoryType.expense,
         name: '식비',
-        isDefault: true,
-        isHidden: false,
       ),
     ]);
     final members = FakeHouseholdMemberRepository([_member]);

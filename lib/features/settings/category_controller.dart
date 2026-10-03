@@ -1,6 +1,8 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../core/session/app_session.dart';
+import '../../core/category_changes.dart';
+import '../../core/transaction_changes.dart';
 import '../../data/models/category.dart';
 import '../../data/repository_providers.dart';
 
@@ -43,6 +45,7 @@ class CategoriesNotifier extends AsyncNotifier<List<Category>> {
     await ref
         .read(categoryRepositoryProvider)
         .create(householdId: householdId, type: type, name: name);
+    ref.read(categoryChangesProvider.notifier).changed();
     await refresh();
   }
 
@@ -53,16 +56,15 @@ class CategoriesNotifier extends AsyncNotifier<List<Category>> {
     await ref
         .read(categoryRepositoryProvider)
         .rename(categoryId: categoryId, name: name);
+    ref.read(categoryChangesProvider.notifier).changed();
+    ref.read(transactionChangesProvider.notifier).changed();
     await refresh();
   }
 
-  Future<void> setHidden({
-    required String categoryId,
-    required bool isHidden,
-  }) async {
-    await ref
-        .read(categoryRepositoryProvider)
-        .setHidden(categoryId: categoryId, isHidden: isHidden);
+  Future<void> delete(String categoryId) async {
+    await ref.read(categoryRepositoryProvider).delete(categoryId);
+    ref.read(categoryChangesProvider.notifier).changed();
+    ref.read(transactionChangesProvider.notifier).changed();
     await refresh();
   }
 }

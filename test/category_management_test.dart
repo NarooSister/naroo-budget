@@ -22,15 +22,32 @@ const _member = HouseholdMember(
 );
 
 void main() {
-  testWidgets('사용자 카테고리를 수정·숨김·복원하고 수입 카테고리를 추가한다', (tester) async {
+  testWidgets('미분류는 표시하지만 수정·삭제·숨김 버튼을 제공하지 않는다', (tester) async {
+    await _pumpManagement(
+      tester,
+      FakeCategoryRepository([
+        const Category(
+          id: 'uncategorized',
+          householdId: 'household-1',
+          type: CategoryType.expense,
+          name: '미분류',
+          isUncategorized: true,
+        ),
+      ]),
+    );
+    expect(find.text('미분류'), findsOneWidget);
+    expect(find.byTooltip('수정'), findsNothing);
+    expect(find.byTooltip('삭제'), findsNothing);
+    expect(find.byTooltip('숨기기'), findsNothing);
+  });
+
+  testWidgets('사용자 카테고리를 수정·삭제하고 수입 카테고리를 추가한다', (tester) async {
     final repository = FakeCategoryRepository([
       const Category(
         id: 'custom',
         householdId: 'household-1',
         type: CategoryType.expense,
         name: '구독',
-        isDefault: false,
-        isHidden: false,
       ),
     ]);
     await _pumpManagement(tester, repository);
@@ -45,13 +62,18 @@ void main() {
     await tester.pumpAndSettle();
     expect(find.text('정기 구독'), findsOneWidget);
     expect(find.text('구독'), findsNothing);
-    await tester.tap(find.byTooltip('숨기기'));
+    await tester.tap(find.byTooltip('삭제'));
     await tester.pumpAndSettle();
-    expect(find.text('숨김'), findsOneWidget);
-    await tester.tap(find.byTooltip('숨김 해제'));
+    expect(find.text('‘정기 구독’을 삭제할까요?'), findsOneWidget);
+    expect(find.text('카테고리에 포함된 내용은 모두 미분류로 변경됩니다.'), findsOneWidget);
+    await tester.tap(find.text('취소'));
     await tester.pumpAndSettle();
-    expect(find.text('숨김'), findsNothing);
-    expect(find.byTooltip('숨기기'), findsOneWidget);
+    expect(find.text('정기 구독'), findsOneWidget);
+    await tester.tap(find.byTooltip('삭제'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.widgetWithText(TextButton, '삭제'));
+    await tester.pumpAndSettle();
+    expect(find.text('정기 구독'), findsNothing);
     await tester.tap(find.text('수입'));
     await tester.pumpAndSettle();
     expect(find.text('카테고리가 없어요.'), findsOneWidget);
@@ -71,15 +93,13 @@ void main() {
     );
   });
 
-  testWidgets('편집 취소와 저장·숨김·목록 오류를 사용자에게 표시한다', (tester) async {
+  testWidgets('편집 취소와 저장·삭제·목록 오류를 사용자에게 표시한다', (tester) async {
     final repository = _FailingCategoryRepository([
       const Category(
         id: 'custom',
         householdId: 'household-1',
         type: CategoryType.expense,
         name: '구독',
-        isDefault: false,
-        isHidden: false,
       ),
     ]);
     final container = await _pumpManagement(tester, repository);
@@ -99,10 +119,12 @@ void main() {
     expect(find.text('구독'), findsOneWidget);
     await tester.pump(const Duration(seconds: 5));
     await tester.pumpAndSettle();
-    await tester.tap(find.byTooltip('숨기기'));
+    await tester.tap(find.byTooltip('삭제'));
     await tester.pumpAndSettle();
-    expect(find.text('카테고리 숨김 상태를 바꾸지 못했습니다.'), findsOneWidget);
-    expect(find.byTooltip('숨기기'), findsOneWidget);
+    await tester.tap(find.widgetWithText(TextButton, '삭제'));
+    await tester.pumpAndSettle();
+    expect(find.text('카테고리를 삭제하지 못했습니다.'), findsOneWidget);
+    expect(find.byTooltip('삭제'), findsOneWidget);
     repository.failLoad = true;
     container.invalidate(categoriesProvider);
     await tester.pumpAndSettle();
@@ -120,16 +142,12 @@ void main() {
         householdId: 'household-1',
         type: CategoryType.expense,
         name: '식비',
-        isDefault: true,
-        isHidden: false,
       ),
       const Category(
         id: 'c2',
         householdId: 'household-1',
         type: CategoryType.income,
         name: '월급',
-        isDefault: true,
-        isHidden: false,
       ),
     ]);
 
@@ -211,21 +229,13 @@ class _FailingCategoryRepository extends FakeCategoryRepository {
   Future<List<Category>> listByHousehold(
     String householdId, {
     CategoryType? type,
-    bool includeHidden = true,
   }) {
     if (failLoad) throw StateError('load failed');
-    return super.listByHousehold(
-      householdId,
-      type: type,
-      includeHidden: includeHidden,
-    );
+    return super.listByHousehold(householdId, type: type);
   }
 
   @override
-  Future<Category> setHidden({
-    required String categoryId,
-    required bool isHidden,
-  }) async => throw StateError('denied');
+  Future<void> delete(String categoryId) async => throw StateError('denied');
 }
 
 class _FakeAppSessionNotifier extends AppSessionNotifier {

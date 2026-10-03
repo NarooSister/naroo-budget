@@ -30,28 +30,29 @@ void main() {
     return SupabaseCategoryRepository(client);
   }
 
-  test('실제 카테고리 조회는 Household/타입/숨김으로 제한하고 응답을 변환한다', () async {
+  test('실제 카테고리 조회는 Household/타입으로 제한하고 응답을 변환한다', () async {
     final repository = await repositoryFor((request) async {
       expect(request.method, 'GET');
       expect(request.uri.path, '/rest/v1/categories');
       final query = request.uri.queryParameters;
       expect(query['household_id'], 'eq.h1');
       expect(query['type'], 'eq.expense');
-      expect(query['is_hidden'], 'eq.false');
-      expect(query['order'], 'created_at.desc.nullslast');
+      expect(query.containsKey('is_hidden'), false);
+      expect(
+        query['order'],
+        'is_uncategorized.asc.nullslast,created_at.asc.nullslast,id.asc.nullslast',
+      );
       _respond(request, [_row()]);
     });
     final items = await repository.listByHousehold(
       'h1',
       type: CategoryType.expense,
-      includeHidden: false,
     );
     expect(items.single.id, 'c1');
     expect(items.single.householdId, 'h1');
     expect(items.single.name, '식비');
     expect(items.single.type, CategoryType.expense);
-    expect(items.single.isDefault, false);
-    expect(items.single.isHidden, false);
+    expect(items.single.isUncategorized, false);
   });
 
   test('전체 카테고리 조회는 타입/숨김 필터를 붙이지 않는다', () async {
@@ -65,15 +66,13 @@ void main() {
     expect(await repository.listByHousehold('h1'), isEmpty);
   });
 
-  test('사용자 카테고리 생성은 공백 제거와 기본/숨김 필드를 유지한다', () async {
+  test('사용자 카테고리 생성은 공백을 제거하고 시스템 필드를 전송하지 않는다', () async {
     final repository = await repositoryFor((request) async {
       expect(request.method, 'POST');
       expect(await _body(request), {
         'household_id': 'h1',
         'type': 'income',
         'name': '용돈',
-        'is_default': false,
-        'is_hidden': false,
       });
       _respond(request, _row(name: '용돈', type: 'income'));
     });
@@ -86,13 +85,13 @@ void main() {
     expect(item.type, CategoryType.income);
   });
 
-  test('기본 카테고리 이름 수정은 조회 후 쓰기 요청 없이 거부한다', () async {
+  test('미분류 이름 수정은 조회 후 쓰기 요청 없이 거부한다', () async {
     var calls = 0;
     final repository = await repositoryFor((request) async {
       calls++;
       expect(request.method, 'GET');
       expect(request.uri.queryParameters['id'], 'eq.c1');
-      _respond(request, _row(isDefault: true));
+      _respond(request, _row(isUncategorized: true));
     });
     await expectLater(
       repository.rename(categoryId: 'c1', name: '식비 수정'),
@@ -121,26 +120,17 @@ void main() {
     expect(methods, ['GET', 'PATCH']);
   });
 
-  test('기본 카테고리도 숨김/표시를 변경할 수 있다', () async {
-    final changes = <bool>[];
+  test('삭제는 건수 조회 없이 RPC 한 번으로 요청한다', () async {
+    var calls = 0;
     final repository = await repositoryFor((request) async {
-      expect(request.method, 'PATCH');
-      expect(request.uri.queryParameters['id'], 'eq.c1');
-      final body = await _body(request);
-      final hidden = body['is_hidden'] as bool;
-      expect(body, {'is_hidden': hidden});
-      changes.add(hidden);
-      _respond(request, _row(isDefault: true, isHidden: hidden));
+      calls++;
+      expect(request.method, 'POST');
+      expect(request.uri.path, '/rest/v1/rpc/delete_category');
+      expect(await _body(request), {'target_category_id': 'c1'});
+      request.response.statusCode = 204;
     });
-    expect(
-      (await repository.setHidden(categoryId: 'c1', isHidden: true)).isHidden,
-      true,
-    );
-    expect(
-      (await repository.setHidden(categoryId: 'c1', isHidden: false)).isHidden,
-      false,
-    );
-    expect(changes, [true, false]);
+    await repository.delete('c1');
+    expect(calls, 1);
   });
 
   test('빈 이름은 생성/수정 모두 HTTP 요청 전에 거부한다', () async {
@@ -164,7 +154,7 @@ void main() {
     expect(calls, 0);
   });
 
-  test('실제 조회/생성/수정/숨김의 서버 오류를 성공으로 처리하지 않는다', () async {
+  test('실제 조회/생성/수정/삭제의 서버 오류를 성공으로 처리하지 않는다', () async {
     final repository = await repositoryFor((request) async {
       request.response.statusCode = 403;
       _respond(request, {'message': 'denied', 'code': '42501'});
@@ -180,25 +170,20 @@ void main() {
       error,
     );
     await expectLater(repository.rename(categoryId: 'c1', name: '구독'), error);
-    await expectLater(
-      repository.setHidden(categoryId: 'c1', isHidden: true),
-      error,
-    );
+    await expectLater(repository.delete('c1'), error);
   });
 }
 
 Map<String, Object?> _row({
   String name = '식비',
   String type = 'expense',
-  bool isDefault = false,
-  bool isHidden = false,
+  bool isUncategorized = false,
 }) => {
   'id': 'c1',
   'household_id': 'h1',
   'type': type,
   'name': name,
-  'is_default': isDefault,
-  'is_hidden': isHidden,
+  'is_uncategorized': isUncategorized,
 };
 
 Future<Map<String, dynamic>> _body(HttpRequest request) async =>

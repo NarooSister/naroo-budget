@@ -12,12 +12,10 @@ class FakeCategoryRepository implements CategoryRepository {
   Future<List<Category>> listByHousehold(
     String householdId, {
     CategoryType? type,
-    bool includeHidden = true,
   }) async {
     return _items
         .where((item) => item.householdId == householdId)
         .where((item) => type == null || item.type == type)
-        .where((item) => includeHidden || !item.isHidden)
         .toList(growable: false);
   }
 
@@ -37,8 +35,6 @@ class FakeCategoryRepository implements CategoryRepository {
       householdId: householdId,
       type: type,
       name: trimmed,
-      isDefault: false,
-      isHidden: false,
     );
     _items.add(category);
     return category;
@@ -55,8 +51,8 @@ class FakeCategoryRepository implements CategoryRepository {
     }
 
     final current = _items[index];
-    if (current.isDefault) {
-      throw StateError('기본 카테고리 이름은 수정할 수 없습니다.');
+    if (current.isUncategorized) {
+      throw StateError('미분류 이름은 수정할 수 없습니다.');
     }
 
     final trimmed = name.trim();
@@ -70,17 +66,10 @@ class FakeCategoryRepository implements CategoryRepository {
   }
 
   @override
-  Future<Category> setHidden({
-    required String categoryId,
-    required bool isHidden,
-  }) async {
+  Future<void> delete(String categoryId) async {
     final index = _items.indexWhere((item) => item.id == categoryId);
-    if (index < 0) {
-      throw StateError('category not found');
-    }
-
-    final updated = _items[index].copyWith(isHidden: isHidden);
-    _items[index] = updated;
-    return updated;
+    if (index < 0) throw StateError('category not found');
+    if (_items[index].isUncategorized) throw StateError('미분류는 삭제할 수 없습니다.');
+    _items.removeAt(index);
   }
 }

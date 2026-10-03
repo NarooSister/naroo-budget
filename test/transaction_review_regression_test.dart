@@ -260,7 +260,9 @@ void main() {
   });
 
   for (final categoryId in ['food', 'old-hidden']) {
-    testWidgets('수정 시 기존 $categoryId 외의 숨김 카테고리는 선택할 수 없다', (tester) async {
+    testWidgets('수정 시 기존 $categoryId 포함 모든 같은 유형 카테고리를 선택할 수 있다', (
+      tester,
+    ) async {
       final repository = FakeTransactionRepository([
         _item(categoryId: categoryId),
       ]);
@@ -270,18 +272,15 @@ void main() {
       await tester.pumpAndSettle();
 
       expect(find.widgetWithText(NarooCategoryChip, '식비'), findsOneWidget);
-      expect(
-        find.widgetWithText(NarooCategoryChip, '기존 숨김'),
-        categoryId == 'old-hidden' ? findsOneWidget : findsNothing,
-      );
-      expect(find.widgetWithText(NarooCategoryChip, '다른 숨김'), findsNothing);
+      expect(find.widgetWithText(NarooCategoryChip, '기존 숨김'), findsOneWidget);
+      expect(find.widgetWithText(NarooCategoryChip, '다른 숨김'), findsOneWidget);
       expect(find.widgetWithText(NarooCategoryChip, '월급'), findsNothing);
 
       await tester.tap(find.text('수입'));
       await tester.pumpAndSettle();
       expect(find.widgetWithText(NarooCategoryChip, '월급'), findsOneWidget);
       expect(find.widgetWithText(NarooCategoryChip, '기존 숨김'), findsNothing);
-      expect(find.widgetWithText(NarooCategoryChip, '숨긴 수입'), findsNothing);
+      expect(find.widgetWithText(NarooCategoryChip, '숨긴 수입'), findsOneWidget);
       await tester.tap(find.text('지출'));
       await tester.pumpAndSettle();
       await tester.tap(
@@ -355,11 +354,11 @@ Future<void> _pumpApp(
   FakeTransactionRepository repository,
 ) async {
   final categories = [
-    ('food', '식비', CategoryType.expense, false),
-    ('old-hidden', '기존 숨김', CategoryType.expense, true),
-    ('other-hidden', '다른 숨김', CategoryType.expense, true),
-    ('salary', '월급', CategoryType.income, false),
-    ('hidden-income', '숨긴 수입', CategoryType.income, true),
+    ('food', '식비', CategoryType.expense),
+    ('old-hidden', '기존 숨김', CategoryType.expense),
+    ('other-hidden', '다른 숨김', CategoryType.expense),
+    ('salary', '월급', CategoryType.income),
+    ('hidden-income', '숨긴 수입', CategoryType.income),
   ];
   await tester.pumpWidget(
     ProviderScope(
@@ -367,14 +366,12 @@ Future<void> _pumpApp(
         appSessionProvider.overrideWith(_ReadySession.new),
         categoryRepositoryProvider.overrideWithValue(
           FakeCategoryRepository([
-            for (final (id, name, type, hidden) in categories)
+            for (final (id, name, type) in categories)
               Category(
                 id: id,
                 householdId: _member.householdId,
                 type: type,
                 name: name,
-                isDefault: false,
-                isHidden: hidden,
               ),
           ]),
         ),

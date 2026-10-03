@@ -78,29 +78,27 @@ begin
   insert into public.categories (
     household_id,
     type,
-    name,
-    is_default,
-    is_hidden
+    name
   )
   values
     -- expense defaults
-    (new_household_id, 'expense', '식비', true, false),
-    (new_household_id, 'expense', '카페/간식', true, false),
-    (new_household_id, 'expense', '교통', true, false),
-    (new_household_id, 'expense', '쇼핑', true, false),
-    (new_household_id, 'expense', '생활', true, false),
-    (new_household_id, 'expense', '주거', true, false),
-    (new_household_id, 'expense', '통신', true, false),
-    (new_household_id, 'expense', '의료', true, false),
-    (new_household_id, 'expense', '보험', true, false),
-    (new_household_id, 'expense', '여가', true, false),
-    (new_household_id, 'expense', '기타', true, false),
+    (new_household_id, 'expense', '식비'),
+    (new_household_id, 'expense', '카페/간식'),
+    (new_household_id, 'expense', '교통'),
+    (new_household_id, 'expense', '쇼핑'),
+    (new_household_id, 'expense', '생활'),
+    (new_household_id, 'expense', '주거'),
+    (new_household_id, 'expense', '통신'),
+    (new_household_id, 'expense', '의료'),
+    (new_household_id, 'expense', '보험'),
+    (new_household_id, 'expense', '여가'),
+    (new_household_id, 'expense', '기타'),
     -- income defaults
-    (new_household_id, 'income', '월급', true, false),
-    (new_household_id, 'income', '보너스', true, false),
-    (new_household_id, 'income', '용돈', true, false),
-    (new_household_id, 'income', '이자', true, false),
-    (new_household_id, 'income', '기타', true, false);
+    (new_household_id, 'income', '월급'),
+    (new_household_id, 'income', '보너스'),
+    (new_household_id, 'income', '용돈'),
+    (new_household_id, 'income', '이자'),
+    (new_household_id, 'income', '기타');
 
   raise notice 'Bootstrap complete. household_id=%', new_household_id;
 end;

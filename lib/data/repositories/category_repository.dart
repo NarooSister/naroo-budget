@@ -4,7 +4,6 @@ abstract class CategoryRepository {
   Future<List<Category>> listByHousehold(
     String householdId, {
     CategoryType? type,
-    bool includeHidden = true,
   });
 
   Future<Category> create({
@@ -15,8 +14,5 @@ abstract class CategoryRepository {
 
   Future<Category> rename({required String categoryId, required String name});
 
-  Future<Category> setHidden({
-    required String categoryId,
-    required bool isHidden,
-  });
+  Future<void> delete(String categoryId);
 }

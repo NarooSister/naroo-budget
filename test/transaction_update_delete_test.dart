@@ -172,8 +172,6 @@ List<Override> _overrides(FakeTransactionRepository transactions) {
           householdId: 'household-1',
           type: CategoryType.expense,
           name: '식비',
-          isDefault: true,
-          isHidden: false,
         ),
       ]),
     ),

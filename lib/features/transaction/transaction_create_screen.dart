@@ -35,7 +35,6 @@ class _TransactionCreateScreenState
 
   CategoryType _type = CategoryType.expense;
   String? _categoryId;
-  String? _existingCategoryId;
   String? _memberId;
   String? _existingMemberId;
   AttributionKind _attributionKind = AttributionKind.member;
@@ -76,7 +75,6 @@ class _TransactionCreateScreenState
     setState(() {
       _type = existing.type;
       _categoryId = existing.categoryId;
-      _existingCategoryId = existing.categoryId;
       _memberId = existing.memberId;
       _existingMemberId = existing.memberId;
       _attributionKind = existing.attributionKind;
@@ -237,12 +235,7 @@ class _TransactionCreateScreenState
         ? 'shared'
         : _memberId ?? currentMemberId;
     final membersAsync = ref.watch(transactionMembersProvider);
-    final categoriesAsync = ref.watch(
-      transactionCategoriesProvider((
-        type: _type,
-        existingCategoryId: _existingCategoryId,
-      )),
-    );
+    final categoriesAsync = ref.watch(transactionCategoriesProvider(_type));
 
     return Scaffold(
       appBar: AppBar(

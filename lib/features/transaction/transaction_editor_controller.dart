@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../core/session/app_session.dart';
 import '../../core/household_member_changes.dart';
 import '../../core/transaction_changes.dart';
+import '../../core/category_changes.dart';
 import '../../data/models/category.dart';
 import '../../data/models/household_member.dart';
 import '../../data/models/transaction.dart';
@@ -25,31 +26,17 @@ final transactionMembersProvider =
     });
 
 final transactionCategoriesProvider = FutureProvider.autoDispose
-    .family<List<Category>, ({CategoryType type, String? existingCategoryId})>((
-      ref,
-      args,
-    ) async {
+    .family<List<Category>, CategoryType>((ref, type) async {
+      ref.watch(categoryChangesProvider);
       final session = await ref.watch(appSessionProvider.future);
       final householdId = session.member?.householdId;
       if (householdId == null) {
         return const [];
       }
 
-      final categories = await ref
+      return ref
           .read(categoryRepositoryProvider)
-          .listByHousehold(
-            householdId,
-            type: args.type,
-            includeHidden: args.existingCategoryId != null,
-          );
-      // An existing hidden category can be retained, but other hidden categories
-      // must not become available just because this is an edit.
-      return categories
-          .where(
-            (category) =>
-                !category.isHidden || category.id == args.existingCategoryId,
-          )
-          .toList(growable: false);
+          .listByHousehold(householdId, type: type);
     });
 
 enum TransactionEditorAction { idle, loading, saving, deleting }
