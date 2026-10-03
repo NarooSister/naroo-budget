@@ -1,5 +1,6 @@
 import '../../core/amount_rules.dart';
 import 'category.dart';
+import 'payment_method.dart';
 
 enum AttributionKind { member, shared }
 
@@ -13,6 +14,7 @@ class Transaction {
     required this.amount,
     required this.categoryId,
     this.subcategoryId,
+    this.paymentMethod,
     required this.occurredOn,
     this.memo,
   });
@@ -25,6 +27,7 @@ class Transaction {
   final int amount;
   final String categoryId;
   final String? subcategoryId;
+  final PaymentMethod? paymentMethod;
   final DateTime occurredOn;
   final String? memo;
 
@@ -40,6 +43,7 @@ class Transaction {
       amount: json['amount'] as int,
       categoryId: json['category_id'] as String,
       subcategoryId: json['subcategory_id'] as String?,
+      paymentMethod: PaymentMethod.fromDb(json['payment_method'] as String?),
       occurredOn: _parseDate(json['occurred_on'] as String),
       memo: json['memo'] as String?,
     );
@@ -104,6 +108,7 @@ class NewTransaction {
     required this.amount,
     required this.categoryId,
     this.subcategoryId,
+    this.paymentMethod,
     required this.occurredOn,
     this.memo,
   });
@@ -115,6 +120,7 @@ class NewTransaction {
   final int amount;
   final String categoryId;
   final String? subcategoryId;
+  final PaymentMethod? paymentMethod;
   final DateTime occurredOn;
   final String? memo;
 }

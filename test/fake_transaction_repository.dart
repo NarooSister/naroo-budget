@@ -45,6 +45,7 @@ class FakeTransactionRepository implements TransactionRepository {
       amount: input.amount,
       categoryId: input.categoryId,
       subcategoryId: input.subcategoryId,
+      paymentMethod: input.paymentMethod,
       occurredOn: input.occurredOn,
       memo: input.memo,
     );
@@ -77,6 +78,7 @@ class FakeTransactionRepository implements TransactionRepository {
       amount: input.amount,
       categoryId: input.categoryId,
       subcategoryId: input.subcategoryId,
+      paymentMethod: input.paymentMethod,
       occurredOn: input.occurredOn,
       memo: input.memo,
     );

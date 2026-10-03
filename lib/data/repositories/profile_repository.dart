@@ -1,6 +1,7 @@
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../../core/profile_name_rules.dart';
+import '../models/payment_method.dart';
 import '../models/profile.dart';
 
 class ProfileRepository {
@@ -43,6 +44,19 @@ class ProfileRepository {
       'set_profile_name',
       params: {'profile_name': name.trim()},
     );
+    return Profile.fromJson(row);
+  }
+
+  Future<Profile> saveDefaultPaymentMethod({
+    required String userId,
+    required PaymentMethod method,
+  }) async {
+    final row = await _requireClient()
+        .from('profiles')
+        .update({'default_payment_method': method.dbValue})
+        .eq('id', userId)
+        .select()
+        .single();
     return Profile.fromJson(row);
   }
 

@@ -7,6 +7,7 @@ import 'package:naroo/core/seoul_date.dart';
 import 'package:naroo/core/session/app_session.dart';
 import 'package:naroo/data/models/category.dart';
 import 'package:naroo/data/models/household_member.dart';
+import 'package:naroo/data/models/payment_method.dart';
 import 'package:naroo/data/models/profile.dart';
 import 'package:naroo/data/models/transaction.dart';
 import 'package:naroo/data/repository_providers.dart';
@@ -208,6 +209,79 @@ void main() {
     expect(transactions.created.last.subcategoryId, 'eating-out');
   });
 
+  testWidgets('새 지출은 기본 결제 수단을 먼저 선택하고 맨 앞에 둔다', (tester) async {
+    tester.view.physicalSize = const Size(390, 844);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+    final transactions = FakeTransactionRepository();
+    await _pumpApp(tester, transactions, _subcategoryFixtures);
+
+    await tester.tap(find.byTooltip('기록 추가'));
+    await tester.pumpAndSettle();
+    expect(_paymentLabels(tester), ['체크카드', '신용카드', '현금']);
+    expect(_selectedPayment(tester), {PaymentMethod.debitCard});
+    await tester.enterText(find.byType(TextField).first, '1000');
+    await tester.tap(find.text('카페'));
+    await tester.tap(find.text('저장'));
+    await tester.pumpAndSettle();
+    expect(transactions.created.single.paymentMethod, PaymentMethod.debitCard);
+  });
+
+  testWidgets('자주 쓰는 수단을 앞에 두고 해제·수입 전환 시 미지정으로 저장한다', (tester) async {
+    tester.view.physicalSize = const Size(390, 844);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+    final transactions = FakeTransactionRepository();
+    await _pumpApp(
+      tester,
+      transactions,
+      [
+        ..._subcategoryFixtures,
+        const Category(
+          id: 'salary',
+          householdId: 'household-1',
+          type: CategoryType.income,
+          name: '월급',
+        ),
+      ],
+      profile: const Profile(
+        id: 'user-1',
+        displayName: '테스트 사용자',
+        defaultPaymentMethod: PaymentMethod.cash,
+      ),
+    );
+
+    await tester.tap(find.byTooltip('기록 추가'));
+    await tester.pumpAndSettle();
+    expect(_paymentLabels(tester), ['현금', '체크카드', '신용카드']);
+    expect(_selectedPayment(tester), {PaymentMethod.cash});
+
+    await tester.tap(find.text('현금'));
+    await tester.pumpAndSettle();
+    expect(_selectedPayment(tester), isEmpty);
+    expect(find.text('미지정'), findsOneWidget);
+    await tester.enterText(find.byType(TextField).first, '1000');
+    await tester.tap(find.text('카페'));
+    await tester.tap(find.text('저장'));
+    await tester.pumpAndSettle();
+    expect(transactions.created.single.paymentMethod, isNull);
+
+    await tester.tap(find.byTooltip('기록 추가'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('신용카드'));
+    await tester.tap(find.text('수입'));
+    await tester.pumpAndSettle();
+    expect(find.text('결제 수단'), findsNothing);
+    await tester.enterText(find.byType(TextField).first, '5000');
+    await tester.tap(find.text('월급'));
+    await tester.tap(find.text('저장'));
+    await tester.pumpAndSettle();
+    expect(transactions.created.last.type, CategoryType.income);
+    expect(transactions.created.last.paymentMethod, isNull);
+  });
+
   testWidgets('미분류 기존 기록은 수정 시에만 미분류를 유지할 수 있다', (tester) async {
     final transactions = FakeTransactionRepository([
       TransactionListItem(
@@ -234,12 +308,23 @@ void main() {
     await tester.tap(find.text('수정 저장'));
     await tester.pumpAndSettle();
     expect(transactions.updateCalls, 1);
-    expect(
-      (await transactions.findById('tx-1'))?.categoryId,
-      'unc',
-    );
+    expect((await transactions.findById('tx-1'))?.categoryId, 'unc');
   });
 }
+
+List<String> _paymentLabels(WidgetTester tester) => tester
+    .widget<SegmentedButton<PaymentMethod>>(
+      find.byType(SegmentedButton<PaymentMethod>),
+    )
+    .segments
+    .map((segment) => (segment.label! as Text).data!)
+    .toList();
+
+Set<PaymentMethod> _selectedPayment(WidgetTester tester) => tester
+    .widget<SegmentedButton<PaymentMethod>>(
+      find.byType(SegmentedButton<PaymentMethod>),
+    )
+    .selected;
 
 const _subcategoryFixtures = [
   Category(
@@ -280,17 +365,18 @@ const _subcategoryFixtures = [
 Future<void> _pumpApp(
   WidgetTester tester,
   FakeTransactionRepository transactions,
-  List<Category> categories,
-) async {
+  List<Category> categories, {
+  Profile profile = _profile,
+}) async {
   await tester.pumpWidget(
     ProviderScope(
       overrides: [
         appSessionProvider.overrideWith(
           () => _FakeAppSessionNotifier(
-            const AppSession.ready(
+            AppSession.ready(
               userId: 'user-1',
               email: 'user@example.com',
-              profile: _profile,
+              profile: profile,
               member: _member,
             ),
           ),

@@ -6,6 +6,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import 'package:naroo/data/models/category.dart';
+import 'package:naroo/data/models/payment_method.dart';
 import 'package:naroo/data/models/transaction.dart';
 import 'package:naroo/data/supabase/supabase_transaction_repository.dart';
 
@@ -104,10 +105,15 @@ void main() {
   test('대분류·소분류 이름을 FK를 구분해 조회한다', () async {
     final repository = await repositoryFor((request) async {
       final select = request.uri.queryParameters['select']!;
-      expect(select, contains('categories!transactions_category_id_fkey(name)'));
       expect(
         select,
-        contains('subcategory:categories!transactions_subcategory_id_fkey(name)'),
+        contains('categories!transactions_category_id_fkey(name)'),
+      );
+      expect(
+        select,
+        contains(
+          'subcategory:categories!transactions_subcategory_id_fkey(name)',
+        ),
       );
       if (request.uri.queryParameters['offset'] != '0') {
         await _respond(request, []);
@@ -155,6 +161,45 @@ void main() {
     });
   }
 
+  test('지출 결제 수단을 저장·변환하고 수입 결제 수단은 요청 전에 거절한다', () async {
+    var requests = 0;
+    final repository = await repositoryFor((request) async {
+      requests++;
+      final body = jsonDecode(await utf8.decoder.bind(request).join());
+      expect(body['payment_method'], 'credit_card');
+      await _respond(request, {..._row(0), 'payment_method': 'credit_card'});
+    });
+    final saved = await repository.create(
+      NewTransaction(
+        householdId: 'household-1',
+        memberId: 'member-1',
+        type: CategoryType.expense,
+        amount: 100,
+        categoryId: 'food',
+        paymentMethod: PaymentMethod.creditCard,
+        occurredOn: DateTime(2024, 2, 1),
+      ),
+    );
+    expect(saved.paymentMethod, PaymentMethod.creditCard);
+    expect(Transaction.fromJson(_row(0)).paymentMethod, isNull);
+
+    await expectLater(
+      repository.create(
+        NewTransaction(
+          householdId: 'household-1',
+          memberId: 'member-1',
+          type: CategoryType.income,
+          amount: 100,
+          categoryId: 'salary',
+          paymentMethod: PaymentMethod.cash,
+          occurredOn: DateTime(2024, 2, 1),
+        ),
+      ),
+      throwsArgumentError,
+    );
+    expect(requests, 1);
+  });
+
   test('상한 초과 금액은 생성과 수정 모두 HTTP 요청 전에 거절한다', () async {
     var requests = 0;
     final repository = await repositoryFor((request) async {
@@ -195,6 +240,7 @@ void main() {
             'amount': NewTransaction.maxAmount,
             'category_id': 'salary',
             'subcategory_id': null,
+            'payment_method': null,
             'occurred_on': '2024-12-31',
             'memo': memo == null || memo.trim().isEmpty ? null : memo.trim(),
           };

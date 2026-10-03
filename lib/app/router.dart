@@ -54,7 +54,10 @@ final appRouterProvider = Provider<GoRouter>((ref) {
         case AppSessionStatus.needsHousehold:
           return isHouseholdRequired ? null : AppRoutes.householdRequired;
         case AppSessionStatus.ready:
-          if (isLogin || isHouseholdRequired || isLoadingRoute || isProfileName) {
+          if (isLogin ||
+              isHouseholdRequired ||
+              isLoadingRoute ||
+              isProfileName) {
             return AppRoutes.home;
           }
           return null;

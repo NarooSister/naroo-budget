@@ -10,6 +10,7 @@ import '../../app/theme/naroo_text.dart';
 import '../../app/theme/naroo_widgets.dart';
 import '../../core/session/app_session.dart';
 import '../../data/models/household_member.dart';
+import '../../data/models/payment_method.dart';
 import '../profile/profile_name_form.dart';
 import 'member_name_sheet.dart';
 import 'settings_controller.dart';
@@ -48,6 +49,17 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
         ),
       ),
     );
+  }
+
+  Future<void> _saveDefaultPaymentMethod(PaymentMethod method) async {
+    final saved = await ref
+        .read(defaultPaymentMethodEditorProvider.notifier)
+        .save(method);
+    if (mounted && !saved) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('기본 결제 수단을 저장하지 못했습니다. 다시 시도해 주세요.')),
+      );
+    }
   }
 
   Future<void> _setHidden(HouseholdMember member) async {
@@ -89,6 +101,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
     final displayName = session?.profile?.displayName ?? '사용자';
     final email = session?.email;
     final memberBusy = ref.watch(memberEditorProvider);
+    final pendingPaymentMethod = ref.watch(defaultPaymentMethodEditorProvider);
 
     return Scaffold(
       appBar: AppBar(title: const Text('설정')),
@@ -114,6 +127,27 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                     : () => _editProfileName(session!.profile!.displayName),
                 icon: const Icon(NarooIcons.edit, size: NarooIcons.action),
               ),
+            ),
+            const SizedBox(height: NarooSpacing.space24),
+            Text('기본 결제 수단', style: NarooText.section),
+            const SizedBox(height: NarooSpacing.space4),
+            Text('새 지출에 먼저 선택되고 맨 앞에 표시돼요.', style: NarooText.bodySecondary),
+            const SizedBox(height: NarooSpacing.space12),
+            SegmentedButton<PaymentMethod>(
+              showSelectedIcon: false,
+              segments: [
+                for (final method in PaymentMethod.values)
+                  ButtonSegment(value: method, label: Text(method.label)),
+              ],
+              selected: {
+                pendingPaymentMethod ??
+                    session?.profile?.defaultPaymentMethod ??
+                    PaymentMethod.debitCard,
+              },
+              onSelectionChanged:
+                  session?.profile == null || pendingPaymentMethod != null
+                  ? null
+                  : (value) => _saveDefaultPaymentMethod(value.first),
             ),
             const SizedBox(height: NarooSpacing.space32),
             Text('가계부 구성원', style: NarooText.section),

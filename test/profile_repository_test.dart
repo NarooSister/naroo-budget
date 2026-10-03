@@ -3,6 +3,7 @@ import 'dart:convert';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
+import 'package:naroo/data/models/payment_method.dart';
 import 'package:naroo/data/models/profile.dart';
 import 'package:naroo/data/repositories/profile_repository.dart';
 
@@ -150,6 +151,29 @@ void main() {
       throwsA(isA<PostgrestException>()),
     );
     expect(calls, 1);
+  });
+
+  test('기본 결제 수단은 본인 Profile 컬럼만 수정하고 기본값은 체크카드다', () async {
+    final client = await localSupabaseClient((request) async {
+      expect(request.method, 'PATCH');
+      expect(request.uri.path, '/rest/v1/profiles');
+      expect(request.uri.queryParameters['id'], 'eq.u1');
+      expect(jsonDecode(await utf8.decoder.bind(request).join()), {
+        'default_payment_method': 'cash',
+      });
+      respond(request, {
+        'id': 'u1',
+        'display_name': '나루',
+        'default_payment_method': 'cash',
+      });
+    });
+    final profile = await ProfileRepository(client)
+        .saveDefaultPaymentMethod(userId: 'u1', method: PaymentMethod.cash);
+    expect(profile.defaultPaymentMethod, PaymentMethod.cash);
+    expect(
+      Profile.fromJson({'id': 'u1'}).defaultPaymentMethod,
+      PaymentMethod.debitCard,
+    );
   });
 
   test('Supabase 미설정에서는 Profile 접근을 거부한다', () async {

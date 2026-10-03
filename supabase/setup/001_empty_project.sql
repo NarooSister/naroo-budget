@@ -1,6 +1,6 @@
 -- Naroo: 빈 Supabase 프로젝트용 초기 스키마 (2026-10-03)
 -- 새 프로젝트의 SQL Editor에서 postgres 역할로 이 파일 전체를 한 번 실행한다.
--- 20261003110000까지의 migration 6개를 순서대로 포함한다.
+-- 20261003120000까지의 migration 7개를 순서대로 포함한다.
 -- 기존 프로젝트를 삭제/초기화하지 않는다. Naroo 테이블이 있으면 중단한다.
 -- 성공 시 migration 이력도 등록하므로 포함된 migration을 따로 재실행하지 않는다.
 -- 원본은 supabase/migrations/이며 이 파일은 새 프로젝트 설치용 스냅샷이다.
@@ -865,6 +865,24 @@ create trigger household_members_sync_linked_name
   for each row execute function public.sync_linked_member_name();
 -- END MIGRATION: 20261003110000_profile_names.sql
 
+-- BEGIN MIGRATION: 20261003120000_payment_methods.sql
+-- Expense payment methods. Existing records stay unspecified; income has none.
+alter table public.transactions
+  add column payment_method text,
+  add constraint transactions_payment_method_check check (
+    payment_method is null
+    or (type = 'expense' and payment_method in ('debit_card', 'credit_card', 'cash'))
+  );
+
+-- Per-user default for new expenses; it is also shown first in the picker.
+alter table public.profiles
+  add column default_payment_method text not null default 'debit_card',
+  add constraint profiles_default_payment_method_check check (
+    default_payment_method in ('debit_card', 'credit_card', 'cash')
+  );
+grant update (default_payment_method) on public.profiles to authenticated;
+-- END MIGRATION: 20261003120000_payment_methods.sql
+
 -- 원본 SQL은 supabase/migrations/에 보관한다. 실행 완료된 버전만 기록한다.
 insert into supabase_migrations.schema_migrations (version, name) values
   ('20260928110000', 'initial_schema'),
@@ -872,7 +890,8 @@ insert into supabase_migrations.schema_migrations (version, name) values
   ('20261002090000', 'members_attribution'),
   ('20261003090000', 'category_management'),
   ('20261003100000', 'subcategories'),
-  ('20261003110000', 'profile_names');
+  ('20261003110000', 'profile_names'),
+  ('20261003120000', 'payment_methods');
 
 notify pgrst, 'reload schema';
 commit;

@@ -118,9 +118,8 @@ void main() {
     await tester.enterText(find.byType(TextField), '식비');
     await tester.tap(find.text('추가'));
     await tester.pumpAndSettle();
-    final child = (await repository.listByHousehold(
-      'household-1',
-    )).singleWhere((item) => item.isSubcategory);
+    final child = (await repository.listByHousehold('household-1'))
+        .singleWhere((item) => item.isSubcategory);
     expect(child.parentId, 'food');
     expect(child.name, '식비');
     expect(find.text('식비'), findsNWidgets(2));
@@ -141,10 +140,7 @@ void main() {
     await tester.tap(find.widgetWithText(TextButton, '삭제'));
     await tester.pumpAndSettle();
     expect(find.text('식비'), findsNothing);
-    expect(
-      (await repository.listByHousehold('household-1')).single.id,
-      'unc',
-    );
+    expect((await repository.listByHousehold('household-1')).single.id, 'unc');
   });
 
   testWidgets('편집 취소와 저장·삭제·목록 오류를 사용자에게 표시한다', (tester) async {

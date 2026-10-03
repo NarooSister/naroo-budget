@@ -11,6 +11,7 @@ import '../../core/amount_rules.dart';
 import '../../core/seoul_date.dart';
 import '../../core/session/app_session.dart';
 import '../../data/models/category.dart';
+import '../../data/models/payment_method.dart';
 import '../../data/models/transaction.dart';
 import 'transaction_editor_controller.dart';
 import 'widgets/transaction_category_picker.dart';
@@ -37,6 +38,7 @@ class _TransactionCreateScreenState
   String? _categoryId;
   String? _subcategoryId;
   String? _existingCategoryId;
+  PaymentMethod? _paymentMethod;
   String? _memberId;
   String? _existingMemberId;
   AttributionKind _attributionKind = AttributionKind.member;
@@ -48,9 +50,16 @@ class _TransactionCreateScreenState
       ref.read(transactionEditorProvider(widget.transactionId)).isBusy ||
       !ref.read(transactionEditorProvider(widget.transactionId)).canWrite;
 
+  PaymentMethod get _preferredPaymentMethod =>
+      ref.read(appSessionProvider).value?.profile?.defaultPaymentMethod ??
+      PaymentMethod.debitCard;
+
   @override
   void initState() {
     super.initState();
+    if (!widget.isEditing) {
+      _paymentMethod = _preferredPaymentMethod;
+    }
     if (widget.isEditing) {
       _showOptionalFields = true;
       WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -79,6 +88,7 @@ class _TransactionCreateScreenState
       _categoryId = existing.categoryId;
       _subcategoryId = existing.subcategoryId;
       _existingCategoryId = existing.categoryId;
+      _paymentMethod = existing.paymentMethod;
       _memberId = existing.memberId;
       _existingMemberId = existing.memberId;
       _attributionKind = existing.attributionKind;
@@ -215,6 +225,7 @@ class _TransactionCreateScreenState
       amount: amount,
       categoryId: categoryId,
       subcategoryId: _subcategoryId,
+      paymentMethod: _type == CategoryType.expense ? _paymentMethod : null,
       occurredOn: _occurredOn,
       memo: _memoController.text,
     );
@@ -241,6 +252,8 @@ class _TransactionCreateScreenState
         : _memberId ?? currentMemberId;
     final membersAsync = ref.watch(transactionMembersProvider);
     final categoriesAsync = ref.watch(transactionCategoriesProvider(_type));
+    final preferredPaymentMethod =
+        session?.profile?.defaultPaymentMethod ?? PaymentMethod.debitCard;
 
     return Scaffold(
       appBar: AppBar(
@@ -308,6 +321,10 @@ class _TransactionCreateScreenState
                                     _type = value.first;
                                     _categoryId = null;
                                     _subcategoryId = null;
+                                    _paymentMethod =
+                                        _type == CategoryType.expense
+                                        ? _preferredPaymentMethod
+                                        : null;
                                   });
                                 },
                         ),
@@ -396,6 +413,41 @@ class _TransactionCreateScreenState
                             );
                           },
                         ),
+                        if (_type == CategoryType.expense) ...[
+                          const SizedBox(height: NarooSpacing.space24),
+                          Text('결제 수단', style: NarooText.section),
+                          const SizedBox(height: NarooSpacing.space12),
+                          SegmentedButton<PaymentMethod>(
+                            emptySelectionAllowed: true,
+                            showSelectedIcon: false,
+                            segments: [
+                              for (final method in PaymentMethod.orderedFor(
+                                preferredPaymentMethod,
+                              ))
+                                ButtonSegment(
+                                  value: method,
+                                  label: Text(method.label),
+                                ),
+                            ],
+                            selected: {?_paymentMethod},
+                            onSelectionChanged: _isBusy
+                                ? null
+                                : (value) {
+                                    setState(() {
+                                      _paymentMethod = value.firstOrNull;
+                                    });
+                                  },
+                          ),
+                          if (_paymentMethod == null) ...[
+                            const SizedBox(height: NarooSpacing.space4),
+                            Text(
+                              '미지정',
+                              style: NarooText.caption.copyWith(
+                                color: NarooColors.textSecondary,
+                              ),
+                            ),
+                          ],
+                        ],
                         const SizedBox(height: NarooSpacing.space16),
                         TextButton(
                           onPressed: _isBusy

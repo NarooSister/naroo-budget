@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../core/session/app_session.dart';
 import '../../core/household_member_changes.dart';
 import '../../data/models/household_member.dart';
+import '../../data/models/payment_method.dart';
 import '../../data/repository_providers.dart';
 
 final settingsMembersProvider =
@@ -16,6 +17,44 @@ final settingsMembersProvider =
       if (id == null) return [];
       return ref.read(householdMemberRepositoryProvider).listByHousehold(id);
     });
+
+/// Holds the method being saved so the control does not jump back meanwhile.
+final defaultPaymentMethodEditorProvider =
+    NotifierProvider.autoDispose<DefaultPaymentMethodEditor, PaymentMethod?>(
+      DefaultPaymentMethodEditor.new,
+    );
+
+class DefaultPaymentMethodEditor extends Notifier<PaymentMethod?> {
+  @override
+  PaymentMethod? build() => null;
+
+  Future<bool> save(PaymentMethod method) async {
+    if (state != null) return false;
+    final link = ref.keepAlive();
+    state = method;
+    try {
+      final session = await ref.read(appSessionProvider.future);
+      final userId = session.userId;
+      if (userId == null) throw StateError('로그인이 필요합니다.');
+      await ref
+          .read(profileRepositoryProvider)
+          .saveDefaultPaymentMethod(userId: userId, method: method);
+      if (ref.mounted) {
+        ref.invalidate(appSessionProvider);
+        // The save already succeeded; a failed reload is shown by the session.
+        await ref
+            .read(appSessionProvider.future)
+            .then<void>((_) {}, onError: (_) {});
+      }
+      return true;
+    } catch (_) {
+      return false;
+    } finally {
+      if (ref.mounted) state = null;
+      link.close();
+    }
+  }
+}
 
 final memberEditorProvider = NotifierProvider.autoDispose<MemberEditor, bool>(
   MemberEditor.new,

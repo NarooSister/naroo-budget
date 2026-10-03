@@ -134,6 +134,7 @@ class TransactionListScreen extends ConsumerWidget {
                                 [
                                   ?item.memoText,
                                   item.attributionLabel,
+                                  ?item.transaction.paymentMethod?.label,
                                 ].join(' · '),
                                 maxLines: 1,
                                 overflow: TextOverflow.ellipsis,

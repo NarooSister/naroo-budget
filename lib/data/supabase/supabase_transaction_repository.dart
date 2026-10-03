@@ -127,6 +127,7 @@ class SupabaseTransactionRepository implements TransactionRepository {
       'amount': input.amount,
       'category_id': input.categoryId,
       'subcategory_id': input.subcategoryId,
+      'payment_method': input.paymentMethod?.dbValue,
       'occurred_on': SeoulDate.format(input.occurredOn),
       'memo': (memo == null || memo.isEmpty) ? null : memo,
     };
@@ -141,6 +142,9 @@ class SupabaseTransactionRepository implements TransactionRepository {
     }
     if (input.categoryId.trim().isEmpty) {
       throw ArgumentError('카테고리를 선택해 주세요.');
+    }
+    if (input.type == CategoryType.income && input.paymentMethod != null) {
+      throw ArgumentError('수입에는 결제 수단을 지정할 수 없습니다.');
     }
     if (input.attributionKind == AttributionKind.member &&
         (input.memberId == null || input.memberId!.trim().isEmpty)) {
